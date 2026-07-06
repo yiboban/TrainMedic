@@ -4,10 +4,11 @@
 
 TrainMedic is an evidence-first diagnostics toolkit for PyTorch training failures.
 
-TrainMedic is currently under active development. Phase 3 provides static inspection of
+TrainMedic is currently under active development. Phase 4 provides static inspection of
 model/optimizer parameter relationships, forward output monitoring for the first observed
-NaN and Inf, and accumulated parameter gradient monitoring. It does not yet inspect
-parameter updates, train/eval mode, or full training loops.
+NaN and Inf, accumulated parameter gradient monitoring, and bounded parameter update
+monitoring around `optimizer.step()`. It does not yet inspect train/eval mode or full
+training loops.
 
 ## Goal
 
@@ -89,6 +90,7 @@ Currently implemented:
 - Static model and optimizer parameter inspection.
 - Forward output NaN/Inf monitoring.
 - Accumulated parameter gradient monitoring.
+- Bounded parameter update monitoring around `optimizer.step()`.
 
 Example:
 
@@ -407,6 +409,117 @@ Supported Phase 3 diagnostic codes:
 - `TM2004 GLOBAL_GRADIENT_NORM_EXCEEDS_THRESHOLD`
 - `TM2005 GLOBAL_GRADIENT_NORM_BELOW_THRESHOLD`
 
+## Parameter Update Monitoring
+
+`watch_updates()` observes real `optimizer.step()` calls through PyTorch optimizer
+step pre-hooks and post-hooks. It does not monkey patch `optimizer.step()`, replace the
+optimizer, modify closures, change step arguments, call backward, call step, call
+`zero_grad()`, or clip gradients.
+
+```python
+import torch
+from torch import nn
+
+from trainmedic import watch_updates
+from trainmedic.reports.console import format_diagnostics
+
+
+model = nn.Linear(2, 1, bias=False)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+
+with watch_updates(model, optimizer) as monitor:
+    optimizer.zero_grad()
+    loss = model(torch.ones(1, 2)).sum()
+    loss.backward()
+    optimizer.step()
+
+print(format_diagnostics(monitor.diagnostics))
+```
+
+Healthy output:
+
+```text
+TrainMedic found no diagnostics.
+```
+
+If the context exits normally and no successful `optimizer.step()` was observed, the
+diagnostic is scoped only to that monitor session:
+
+```text
+[1] TM4001 WARNING - Optimizer step was not observed
+Message: No optimizer.step() call was observed during this monitor session.
+Evidence:
+  - selected_parameter_count: 1
+  - successful_step_count: 0
+  - optimizer_group_count: 1
+```
+
+If parameters have finite nonzero gradients but belong only to zero learning-rate groups,
+TrainMedic reports `TM4002` and does not also report `TM4003` for the same parameters:
+
+```text
+[1] TM4002 WARNING - Finite nonzero gradients are in zero learning-rate groups
+Message: At optimizer step 1, one or more parameters had finite nonzero gradients but belonged only to optimizer groups with learning rate 0.
+Evidence:
+  - step_index: 1
+  - affected_parameter_count: 1
+  - affected_parameter_names_preview: ["weight"]
+  - omitted_parameter_count: 0
+  - optimizer_group_indices: [0]
+  - learning_rate_values: [0.0]
+  - selection_count: 1
+```
+
+If a parameter has a finite nonzero gradient, a nonzero known learning rate, and no
+before/after change is detected, TrainMedic reports `TM4003`:
+
+```text
+[1] TM4003 WARNING - Parameter update was not detected
+Message: At optimizer step 1, no parameter change was detected for one or more parameters with finite nonzero gradients.
+Evidence:
+  - step_index: 1
+  - candidate_parameter_count: 1
+  - changed_candidate_count: 0
+  - unchanged_candidate_count: 1
+  - exact_unchanged_count: 1
+  - sampled_unchanged_count: 0
+  - unsupported_or_skipped_count: 0
+  - unchanged_parameter_names_preview: ["weight"]
+  - omitted_parameter_count: 0
+  - per_parameter_preview: [{"name": "weight", "aliases": ["weight"], "group_index": 0, "learning_rate": 0.1, "coverage": "exact", "parameter_numel": 2, "sampled_element_count": 2, "gradient_norm": 1.4142135381698608}]
+  - configured_sample_size: 64
+  - configured_max_snapshot_elements: 100000
+```
+
+Only parameters that are in both the model and optimizer, and have `requires_grad=True`,
+are monitored. Optimizer parameters outside the model remain the responsibility of
+`TM1002`; trainable model parameters missing from the optimizer remain the responsibility
+of `TM1001`.
+
+Only `finite_nonzero` gradients are considered update candidates. `grad=None`, all-zero
+gradients, NaN/Inf gradients, unsupported gradient layouts, unsupported snapshots, and
+explicit zero learning-rate groups do not produce `TM4003`.
+
+Update monitoring uses bounded snapshots. Defaults are `sample_size=64` and
+`max_snapshot_elements=100_000`. If a parameter has at most `sample_size` elements and
+budget is available, coverage is `exact` and all elements are compared. Larger parameters
+use deterministic sampled flat indices. Sampled mode can miss updates that happen only
+outside sampled positions, so TrainMedic reports only that no sampled value changed.
+
+LBFGS and complex closure-based optimizer semantics are not formally supported yet
+because gradients can be computed inside `optimizer.step(closure)`. TrainMedic does not
+modify closures or their return values.
+
+AMP GradScaler internals, `torch.compile`, TorchScript, distributed training, DeepSpeed,
+FSDP, and Lightning are not formally supported yet.
+
+Supported Phase 4 diagnostic codes:
+
+- `TM4000 NO_PARAMETERS_SELECTED_FOR_UPDATE_MONITORING`
+- `TM4001 OPTIMIZER_STEP_NOT_OBSERVED`
+- `TM4002 ZERO_LEARNING_RATE_FOR_UPDATE_CANDIDATES`
+- `TM4003 PARAMETER_UPDATE_NOT_DETECTED`
+
 ## Run Checks
 
 ```bash
@@ -421,7 +534,7 @@ mypy src/trainmedic
 - Phase 1: static model and optimizer inspection.
 - Phase 2: forward numerical monitoring.
 - Phase 3: accumulated parameter gradient monitoring.
-- Phase 4: parameter update monitoring.
+- Phase 4: bounded parameter update monitoring around optimizer steps.
 - Phase 5: train/eval mode checks.
 
 ## Contributing

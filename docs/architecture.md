@@ -54,11 +54,24 @@ Sparse COO gradients are checked through their coalesced values without densifyi
 Global gradient norm diagnostics are user-threshold based only; TrainMedic does not set
 default exploding or vanishing thresholds and never clips gradients.
 
+Phase 4 adds parameter update monitoring using optimizer step pre-hooks and post-hooks.
+TrainMedic observes real `optimizer.step()` calls without replacing the method, changing
+step arguments, modifying closures, calling backward, calling step, or touching optimizer
+state. The monitor selects the intersection of trainable model parameters and optimizer
+parameters by object identity.
+
+Parameter update monitoring uses bounded before/after samples instead of copying whole
+models. Small parameters can be compared exactly when the global snapshot budget allows
+it. Large parameters use deterministic sampled flat indices, so the diagnostic language
+must say that no sampled element changed rather than claiming a full-parameter proof.
+Snapshots are cleared after each post-hook and on close.
+
 Monitoring code must not keep full tensors by default. It should store bounded summaries
 such as shape, dtype, device, min, max, mean, standard deviation, NaN/Inf counts, and norm.
 This keeps memory overhead predictable and avoids retaining computation graphs.
 
-Current phase status: Phase 3 implements static model/optimizer inspection, forward
-output NaN/Inf monitoring, and accumulated parameter gradient monitoring. It does not
-implement Module grad_input/grad_output hooks, parameter update monitoring, train/eval
-mode diagnostics, training-loop monitoring, CLI commands, or automatic fixes.
+Current phase status: Phase 4 implements static model/optimizer inspection, forward
+output NaN/Inf monitoring, accumulated parameter gradient monitoring, and bounded
+parameter update monitoring around optimizer steps. It does not implement Module
+grad_input/grad_output hooks, train/eval mode diagnostics, training-loop monitoring,
+CLI commands, or automatic fixes.

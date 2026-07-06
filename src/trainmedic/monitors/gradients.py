@@ -111,9 +111,8 @@ class GradientMonitor:
         self._handles: list[RemovableHandle] = []
         self._diagnostics: list[Diagnostic] = []
         self._hook_call_counts: dict[int, int] = {}
-        self._sequence_index = 0
         self._unsupported_gradient_count = 0
-        self._observation_count = 0
+        self._hook_observation_count = 0
         self._active = False
         self._started_once = False
         self._checked = False
@@ -153,9 +152,8 @@ class GradientMonitor:
             record.parameter_id: 0
             for record in self._selected_parameters
         }
-        self._sequence_index = 0
         self._unsupported_gradient_count = 0
-        self._observation_count = 0
+        self._hook_observation_count = 0
         self._handles = []
         self._checked = False
 
@@ -241,8 +239,8 @@ class GradientMonitor:
                     checked_parameter_count=len(self._selected_parameters),
                     none_gradient_count=len(none_records),
                     non_none_gradient_count=len(self._selected_parameters) - len(none_records),
-                    hook_observation_count=self._observation_count,
-                    any_backward_observed=self._observation_count > 0,
+                    hook_observation_count=self._hook_observation_count,
+                    any_backward_observed=self._hook_observation_count > 0,
                     none_parameter_names_preview=preview_names,
                     omitted_name_count=max(0, len(none_records) - len(preview_names)),
                     selection_scope=self._selection_scope,
@@ -294,13 +292,16 @@ class GradientMonitor:
         record: ModelParameterRecord,
         parameter: nn.Parameter,
     ) -> None:
+        self._hook_call_counts[record.parameter_id] += 1
+        hook_call_index = self._hook_call_counts[record.parameter_id]
+        self._hook_observation_count += 1
+        sequence_index = self._hook_observation_count
+
         if self._has_diagnostic(GRADIENT_CONTAINS_NAN) and self._has_diagnostic(
             GRADIENT_CONTAINS_INF
         ):
             return
 
-        self._hook_call_counts[record.parameter_id] += 1
-        hook_call_index = self._hook_call_counts[record.parameter_id]
         gradient = parameter.grad
         if gradient is None:
             return
@@ -310,13 +311,11 @@ class GradientMonitor:
             self._unsupported_gradient_count += 1
             return
 
-        self._observation_count += 1
         if stats.nan_count == 0 and stats.inf_count == 0:
             return
 
-        self._sequence_index += 1
         observation = GradientObservation(
-            sequence_index=self._sequence_index,
+            sequence_index=sequence_index,
             parameter_name=record.primary_name,
             parameter_aliases=record.aliases,
             parameter_shape=record.shape,
@@ -388,10 +387,12 @@ def _optimizer_model_parameter_count(
         return 0
 
     model_parameter_ids = {record.parameter_id for record in model_parameters}
-    return sum(
-        1
-        for record in collect_optimizer_parameters(optimizer)
-        if record.parameter_id in model_parameter_ids
+    return len(
+        {
+            record.parameter_id
+            for record in collect_optimizer_parameters(optimizer)
+            if record.parameter_id in model_parameter_ids
+        }
     )
 
 

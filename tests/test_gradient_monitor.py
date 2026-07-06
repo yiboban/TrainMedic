@@ -262,6 +262,24 @@ def test_multiple_abnormal_parameters_report_each_issue_once() -> None:
     assert _codes(diagnostics) == ("TM2002",)
 
 
+def test_gradient_sequence_index_counts_healthy_hook_observations_first() -> None:
+    class HealthyThenBad(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.healthy = nn.Parameter(torch.ones(2))
+            self.bad = nn.Parameter(torch.ones(2))
+
+    model = HealthyThenBad()
+
+    with watch_gradients(model) as monitor:
+        model.healthy.sum().backward(retain_graph=True)
+        NaNGradient.apply(model.bad).sum().backward()
+        diagnostics = monitor.check_gradients()
+
+    assert _codes(diagnostics) == ("TM2002",)
+    assert _evidence(diagnostics[0])["sequence_index"] == 2
+
+
 def test_shared_parameter_registers_one_hook_and_reports_aliases() -> None:
     model = SharedParameterModel()
     hooks_before = _parameter_hook_count(model)
@@ -393,6 +411,35 @@ def test_unsupported_gradient_count_increases_without_false_diagnostic(
 
     assert diagnostics == ()
     assert monitor.unsupported_gradient_count >= 1
+
+
+def test_unsupported_gradient_still_counts_as_backward_observed_for_grad_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = BranchModel()
+
+    monkeypatch.setattr(gradient_module, "_summarize_gradient", lambda gradient: None)
+    with watch_gradients(model) as monitor:
+        model(torch.ones(1, 2)).sum().backward()
+        diagnostics = monitor.check_gradients()
+
+    assert _codes(diagnostics) == ("TM2001",)
+    assert _evidence(diagnostics[0])["any_backward_observed"] is True
+    assert _evidence(diagnostics[0])["hook_observation_count"] == 1
+
+
+def test_optimizer_model_parameter_count_uses_unique_parameter_identity() -> None:
+    model = ScaleModel(scale=1.0)
+    optimizer = torch.optim.SGD([model.weight], lr=0.1)
+    optimizer.param_groups[0]["params"].append(model.weight)
+    model.weight.requires_grad_(False)
+
+    with watch_gradients(model, optimizer) as monitor:
+        diagnostics = monitor.check_gradients()
+
+    assert _codes(diagnostics) == ("TM2000",)
+    assert _evidence(diagnostics[0])["optimizer_model_parameter_count"] == 1
+    assert "TM1007" in tuple(diagnostic.code for diagnostic in inspect_optimizer(model, optimizer))
 
 
 def test_global_norm_exceeds_user_threshold() -> None:
