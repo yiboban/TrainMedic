@@ -33,6 +33,11 @@ monitors every unique module to catch functional operations inside non-leaf modu
 `module_scope="leaf"` monitors leaf modules and always includes the root model for lower
 overhead.
 
+When a shared module has multiple registered aliases, TrainMedic reports all aliases and
+uses one stable primary name for `object_name`. A normal PyTorch forward hook does not
+tell TrainMedic which attribute path was used for a specific call, so the primary name is
+not claimed to be the actual call path.
+
 Forward hooks traverse only tensors, lists, tuples, and mappings in module outputs. They
 store tensor summaries only: shape, dtype, device, numel, NaN count, and Inf count. They
 do not store original tensors, views, masks, modules, containers, inputs, or outputs. Hook
