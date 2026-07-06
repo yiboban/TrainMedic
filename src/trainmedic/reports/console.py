@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 from trainmedic.types import Diagnostic, JsonValue
 
-_NO_ISSUES_MESSAGE = "TrainMedic found no static model/optimizer issues."
+_NO_ISSUES_MESSAGE = "TrainMedic found no diagnostics."
 
 
 def format_diagnostics(diagnostics: Sequence[Diagnostic]) -> str:

@@ -37,8 +37,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/trainmedic/trainmedic"
-Issues = "https://github.com/trainmedic/trainmedic/issues"
+Homepage = "https://github.com/yiboban/TrainMedic"
+Repository = "https://github.com/yiboban/TrainMedic"
+Issues = "https://github.com/yiboban/TrainMedic/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

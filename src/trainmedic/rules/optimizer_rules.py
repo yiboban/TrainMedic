@@ -37,11 +37,16 @@ def inspect_optimizer(
     """
     model_parameters = collect_model_parameters(model)
     optimizer_parameters = collect_optimizer_parameters(optimizer)
+    optimizer_group_count = len(optimizer.param_groups)
 
     diagnostics: list[Diagnostic] = []
     diagnostics.extend(_diagnose_model_parameter_state(model_parameters))
     diagnostics.extend(
-        _diagnose_missing_trainable_parameters(model_parameters, optimizer_parameters)
+        _diagnose_missing_trainable_parameters(
+            model_parameters,
+            optimizer_parameters,
+            optimizer_group_count,
+        )
     )
     diagnostics.extend(
         _diagnose_optimizer_parameters_not_in_model(model_parameters, optimizer_parameters)
@@ -144,9 +149,9 @@ def _diagnose_model_parameter_state(
 def _diagnose_missing_trainable_parameters(
     model_parameters: tuple[ModelParameterRecord, ...],
     optimizer_parameters: tuple[OptimizerParameterRecord, ...],
+    optimizer_group_count: int,
 ) -> tuple[Diagnostic, ...]:
     optimizer_parameter_ids = {record.parameter_id for record in optimizer_parameters}
-    optimizer_group_count = _optimizer_group_count(optimizer_parameters)
 
     diagnostics = []
     for record in model_parameters:
@@ -334,14 +339,6 @@ def _preview_names(names: Iterable[str]) -> tuple[tuple[str, ...], int]:
     sorted_names = tuple(sorted(names))
     preview = sorted_names[:_PREVIEW_LIMIT]
     return preview, max(0, len(sorted_names) - len(preview))
-
-
-def _optimizer_group_count(
-    optimizer_parameters: tuple[OptimizerParameterRecord, ...],
-) -> int:
-    if not optimizer_parameters:
-        return 0
-    return max(record.group_index for record in optimizer_parameters) + 1
 
 
 def _optimizer_positions_by_id(

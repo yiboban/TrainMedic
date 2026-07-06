@@ -26,10 +26,23 @@ Phase 1 implements the first `inspectors`, `rules`, and `reports` modules for st
 model/optimizer parameter checks. Parameter identity comparisons use `id(parameter)` so
 shared parameters and tied weights are handled without Tensor equality comparisons.
 
+Phase 2 adds forward output monitoring. `ForwardMonitor` registers local forward hooks on
+unique modules collected with `named_modules(remove_duplicate=False)`, so shared modules
+receive one hook while diagnostics retain all aliases. The default `module_scope="all"`
+monitors every unique module to catch functional operations inside non-leaf modules.
+`module_scope="leaf"` monitors leaf modules and always includes the root model for lower
+overhead.
+
+Forward hooks traverse only tensors, lists, tuples, and mappings in module outputs. They
+store tensor summaries only: shape, dtype, device, numel, NaN count, and Inf count. They
+do not store original tensors, views, masks, modules, containers, inputs, or outputs. Hook
+functions return `None`, so model outputs and computation graphs are not replaced.
+
 Monitoring code must not keep full tensors by default. It should store bounded summaries
 such as shape, dtype, device, min, max, mean, standard deviation, NaN/Inf counts, and norm.
 This keeps memory overhead predictable and avoids retaining computation graphs.
 
-Current phase status: Phase 1 implements static model/optimizer inspection only. It does
-not implement hooks, gradient monitoring, activation monitoring, parameter update
-monitoring, training-loop monitoring, CLI commands, or automatic fixes.
+Current phase status: Phase 2 implements static model/optimizer inspection and forward
+output NaN/Inf monitoring only. It does not implement backward hooks, gradient
+monitoring, parameter update monitoring, train/eval mode diagnostics, training-loop
+monitoring, CLI commands, or automatic fixes.

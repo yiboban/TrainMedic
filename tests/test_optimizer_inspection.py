@@ -54,6 +54,21 @@ def test_missing_trainable_parameter_reports_tm1001() -> None:
     assert {"name": "optimizer_group_count", "value": 1, "description": None} in evidence
 
 
+def test_missing_parameter_uses_real_optimizer_group_count_with_empty_group() -> None:
+    model = TwoLayerModel()
+    optimizer = torch.optim.SGD(model.first.parameters(), lr=0.1)
+    optimizer.add_param_group({"params": []})
+
+    diagnostics = inspect_optimizer(model, optimizer)
+
+    assert _codes(diagnostics) == ("TM1001",)
+    assert {
+        "name": "optimizer_group_count",
+        "value": 2,
+        "description": None,
+    } in diagnostics[0].to_dict()["evidence"]
+
+
 def test_optimizer_parameter_not_in_model_reports_stable_position() -> None:
     model = TwoLayerModel()
     external = nn.Parameter(torch.ones(1))

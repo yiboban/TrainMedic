@@ -6,7 +6,7 @@ from trainmedic.reports.json_report import diagnostics_to_json
 
 
 def test_empty_console_report() -> None:
-    assert format_diagnostics(()) == "TrainMedic found no static model/optimizer issues."
+    assert format_diagnostics(()) == "TrainMedic found no diagnostics."
 
 
 def test_console_report_preserves_diagnostic_order_and_details() -> None:
