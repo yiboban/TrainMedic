@@ -21,6 +21,7 @@ def test_import_trainmedic() -> None:
     assert trainmedic.Diagnostic is Diagnostic
     assert callable(trainmedic.inspect_optimizer)
     assert callable(trainmedic.watch_forward)
+    assert callable(trainmedic.watch_gradients)
 
 
 def test_version() -> None:

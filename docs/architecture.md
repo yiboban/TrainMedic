@@ -43,11 +43,22 @@ store tensor summaries only: shape, dtype, device, numel, NaN count, and Inf cou
 do not store original tensors, views, masks, modules, containers, inputs, or outputs. Hook
 functions return `None`, so model outputs and computation graphs are not replaced.
 
+Phase 3 adds parameter gradient monitoring using `Parameter.register_post_accumulate_grad_hook`.
+The monitor observes the accumulated `.grad` value after autograd updates a leaf
+Parameter. It stores only summaries and first abnormal observations; it does not retain
+gradient tensors, masks, grad_fn objects, optimizer objects, or hook handles after close.
+When an optimizer is provided, only trainable model parameters managed by that optimizer
+are selected. Without an optimizer, all trainable model parameters are selected.
+
+Sparse COO gradients are checked through their coalesced values without densifying.
+Global gradient norm diagnostics are user-threshold based only; TrainMedic does not set
+default exploding or vanishing thresholds and never clips gradients.
+
 Monitoring code must not keep full tensors by default. It should store bounded summaries
 such as shape, dtype, device, min, max, mean, standard deviation, NaN/Inf counts, and norm.
 This keeps memory overhead predictable and avoids retaining computation graphs.
 
-Current phase status: Phase 2 implements static model/optimizer inspection and forward
-output NaN/Inf monitoring only. It does not implement backward hooks, gradient
-monitoring, parameter update monitoring, train/eval mode diagnostics, training-loop
-monitoring, CLI commands, or automatic fixes.
+Current phase status: Phase 3 implements static model/optimizer inspection, forward
+output NaN/Inf monitoring, and accumulated parameter gradient monitoring. It does not
+implement Module grad_input/grad_output hooks, parameter update monitoring, train/eval
+mode diagnostics, training-loop monitoring, CLI commands, or automatic fixes.

@@ -78,5 +78,61 @@ language-model judgment.
   propagated occurrence.
 - Sparse, meta, quantized, and backend-specific tensors may be skipped and counted as
   unsupported.
-- Backward gradients, parameter updates, train/eval mode diagnostics, distributed
-  training, `torch.compile`, and TorchScript are not formally supported yet.
+- Module backward `grad_input` / `grad_output`, parameter updates, train/eval mode
+  diagnostics, distributed training, `torch.compile`, and TorchScript are not formally
+  supported yet.
+
+## Gradient Rules
+
+### TM2000 NO_PARAMETERS_SELECTED_FOR_GRADIENT_MONITORING
+
+- Severity: `info`
+- Trigger: `check_gradients()` is called and the selected parameter set is empty.
+- Evidence: optimizer presence, total model parameter count, trainable parameter count,
+  optimizer-managed model parameter count, and selected parameter count.
+- Boundary: emitted only at explicit check time; construction and `start()` do not emit
+  diagnostics.
+
+### TM2001 PARAMETER_GRADIENT_IS_NONE
+
+- Severity: `warning`
+- Trigger: at explicit gradient check, one or more selected parameters have `grad is None`.
+- Evidence: checked count, None count, non-None count, hook observation count, whether
+  backward was observed, preview of names, omitted name count, and selection scope.
+- Boundary: this does not prove parameters are broken. Checks before backward,
+  `zero_grad(set_to_none=True)`, unused branches, graph detaches, and intentionally
+  unused parameters can all produce `grad=None`.
+
+### TM2002 GRADIENT_CONTAINS_NAN
+
+- Severity: `error`
+- Trigger: first observed accumulated parameter gradient has `nan_count > 0`.
+- Evidence: parameter name and aliases, parameter summary, hook call index, gradient
+  summary, layout, nnz for sparse COO gradients, NaN count, and Inf count.
+- Boundary: first observed gradient containing NaN is not necessarily the root cause.
+  Forward outputs, loss computation, or custom backward code may have produced it.
+
+### TM2003 GRADIENT_CONTAINS_INF
+
+- Severity: `error`
+- Trigger: first observed accumulated parameter gradient has `inf_count > 0`.
+- Evidence: same shape as TM2002.
+- Boundary: first observed gradient containing Inf is not necessarily the root cause.
+
+### TM2004 GLOBAL_GRADIENT_NORM_EXCEEDS_THRESHOLD
+
+- Severity: `warning`
+- Trigger: user sets `max_global_norm` and the finite global L2 norm is greater than the
+  threshold.
+- Evidence: actual norm, threshold, contributing parameter count, None gradient count,
+  and selection scope.
+- Boundary: TrainMedic does not clip gradients and does not set a default threshold.
+
+### TM2005 GLOBAL_GRADIENT_NORM_BELOW_THRESHOLD
+
+- Severity: `warning`
+- Trigger: user sets `min_global_norm`, at least one gradient contributes, all
+  contributing gradients are finite, and the global L2 norm is below the threshold.
+- Evidence: same shape as TM2004.
+- Boundary: absolute gradient size is model-, task-, and loss-scale-dependent, so this
+  rule only runs with an explicit user threshold.

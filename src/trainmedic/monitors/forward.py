@@ -96,14 +96,23 @@ class ForwardMonitor:
         self._module_call_counts.clear()
         self._sequence_index = 0
         self._unsupported_tensor_count = 0
-        self._handles = []
-
-        for record in _select_module_records(
+        records = _select_module_records(
             collect_model_modules(self._model),
             self._module_scope,
-        ):
+        )
+        new_handles: list[RemovableHandle] = []
+        for record in records:
             self._module_call_counts[record.module_id] = 0
-            self._handles.append(record.module.register_forward_hook(self._make_hook(record)))
+            try:
+                new_handles.append(record.module.register_forward_hook(self._make_hook(record)))
+            except BaseException:
+                for handle in new_handles:
+                    handle.remove()
+                self._handles = []
+                self._active = False
+                raise
+
+        self._handles = new_handles
 
         self._active = True
 

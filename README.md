@@ -2,10 +2,10 @@
 
 TrainMedic is an evidence-first diagnostics toolkit for PyTorch training failures.
 
-TrainMedic is currently under active development. Phase 2 provides static inspection of
-model/optimizer parameter relationships and forward output monitoring for the first
-observed NaN and Inf. It does not yet inspect gradients, parameter updates, train/eval
-mode, or full training loops.
+TrainMedic is currently under active development. Phase 3 provides static inspection of
+model/optimizer parameter relationships, forward output monitoring for the first observed
+NaN and Inf, and accumulated parameter gradient monitoring. It does not yet inspect
+parameter updates, train/eval mode, or full training loops.
 
 ## Goal
 
@@ -86,6 +86,7 @@ Currently implemented:
 
 - Static model and optimizer parameter inspection.
 - Forward output NaN/Inf monitoring.
+- Accumulated parameter gradient monitoring.
 
 Example:
 
@@ -269,6 +270,141 @@ Supported Phase 2 diagnostic codes:
 - `TM3001 FORWARD_OUTPUT_CONTAINS_NAN`
 - `TM3002 FORWARD_OUTPUT_CONTAINS_INF`
 
+## Gradient Monitoring
+
+Gradient monitoring checks accumulated `Parameter.grad` values. Call
+`check_gradients()` after `backward()` and before `optimizer.step()` or `zero_grad()`:
+
+```python
+import torch
+from torch import nn
+
+from trainmedic import watch_gradients
+from trainmedic.reports.console import format_diagnostics
+
+
+class BranchModel(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.used = nn.Linear(2, 1, bias=False)
+        self.unused = nn.Linear(2, 1, bias=False)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.used(inputs)
+
+
+model = BranchModel()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+
+with watch_gradients(model, optimizer) as monitor:
+    loss = model(torch.ones(1, 2)).sum()
+    loss.backward()
+    monitor.check_gradients()
+
+print(format_diagnostics(monitor.diagnostics))
+```
+
+`TM2001` output:
+
+```text
+[1] TM2001 WARNING - Selected parameters have grad=None
+Message: At the explicit gradient check, one or more selected parameters had grad=None.
+Evidence:
+  - checked_parameter_count: 2
+  - none_gradient_count: 1
+  - non_none_gradient_count: 1
+  - hook_observation_count: 1
+  - any_backward_observed: true
+  - none_parameter_names_preview: ["unused.weight"]
+  - omitted_name_count: 0
+  - selection_scope: optimizer
+```
+
+`TM2002` output:
+
+```text
+[1] TM2002 ERROR - Parameter gradient contains NaN
+Object: weight
+Message: This is the first parameter gradient observed to contain NaN during this monitor session.
+Evidence:
+  - sequence_index: 1
+  - parameter_name: weight
+  - parameter_aliases: ["weight"]
+  - parameter_shape: [2]
+  - parameter_dtype: torch.float32
+  - parameter_device: cpu
+  - parameter_numel: 2
+  - hook_call_index: 1
+  - gradient_shape: [2]
+  - gradient_dtype: torch.float32
+  - gradient_device: cpu
+  - gradient_layout: torch.strided
+  - gradient_numel: 2
+  - gradient_nnz: null
+  - nan_count: 2
+  - inf_count: 0
+```
+
+`TM2003` output:
+
+```text
+[1] TM2003 ERROR - Parameter gradient contains Inf
+Object: weight
+Message: This is the first parameter gradient observed to contain Inf during this monitor session.
+Evidence:
+  - sequence_index: 1
+  - parameter_name: weight
+  - parameter_aliases: ["weight"]
+  - parameter_shape: [2]
+  - parameter_dtype: torch.float32
+  - parameter_device: cpu
+  - parameter_numel: 2
+  - hook_call_index: 1
+  - gradient_shape: [2]
+  - gradient_dtype: torch.float32
+  - gradient_device: cpu
+  - gradient_layout: torch.strided
+  - gradient_numel: 2
+  - gradient_nnz: null
+  - nan_count: 0
+  - inf_count: 2
+```
+
+When an optimizer is provided, `watch_gradients()` monitors trainable model parameters
+that are also managed by that optimizer. Without an optimizer, it monitors all trainable
+model parameters. Static relationship issues such as missing optimizer parameters remain
+the responsibility of `inspect_optimizer()`.
+
+GradientMonitor observes the accumulated `.grad` value available when the
+post-accumulate hook runs. If you call backward multiple times without `zero_grad()`,
+gradients accumulate and hook call indexes increase. If `zero_grad(set_to_none=True)` is
+called before `check_gradients()`, selected gradients will be reported as `grad=None`.
+If gradient clipping runs before the check, global norm diagnostics reflect clipped
+gradients.
+
+Global gradient norm checks are off by default. They only run when `max_global_norm` or
+`min_global_norm` is explicitly provided, and TrainMedic never clips gradients.
+
+Gradient NaN and Inf diagnostics report the first runtime observation of each issue, not
+every propagated occurrence. Sparse COO gradients are checked through `coalesce().values()`
+without densifying. Other sparse layouts and special tensor backends may be skipped and
+counted by `monitor.unsupported_gradient_count`.
+
+Gradient hooks and `.item()` calls add overhead and can synchronize CUDA. Use gradient
+monitoring for a small number of diagnostic steps rather than permanent benchmarking.
+
+AMP GradScaler internals, `torch.compile`, TorchScript, distributed training, DeepSpeed,
+FSDP, and Lightning are not formally supported yet.
+
+Supported Phase 3 diagnostic codes:
+
+- `TM2000 NO_PARAMETERS_SELECTED_FOR_GRADIENT_MONITORING`
+- `TM2001 PARAMETER_GRADIENT_IS_NONE`
+- `TM2002 GRADIENT_CONTAINS_NAN`
+- `TM2003 GRADIENT_CONTAINS_INF`
+- `TM2004 GLOBAL_GRADIENT_NORM_EXCEEDS_THRESHOLD`
+- `TM2005 GLOBAL_GRADIENT_NORM_BELOW_THRESHOLD`
+
 ## Run Checks
 
 ```bash
@@ -282,7 +418,7 @@ mypy src/trainmedic
 - Phase 0: project skeleton, tooling, CI, and diagnostic data structures.
 - Phase 1: static model and optimizer inspection.
 - Phase 2: forward numerical monitoring.
-- Phase 3: backward and gradient monitoring.
+- Phase 3: accumulated parameter gradient monitoring.
 - Phase 4: parameter update monitoring.
 - Phase 5: train/eval mode checks.
 

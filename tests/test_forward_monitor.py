@@ -363,3 +363,30 @@ def test_repeated_start_fails_and_close_is_idempotent() -> None:
     monitor.close()
     monitor.close()
     assert _hook_count(model) == hooks_before
+
+
+def test_start_cleans_registered_forward_hooks_if_registration_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = NaNSequentialModel()
+    monitor = watch_forward(model)
+    hooks_before = _hook_count(model)
+    original_error = RuntimeError("register failed")
+
+    def fail_register_forward_hook(hook: object) -> object:
+        del hook
+        raise original_error
+
+    monkeypatch.setattr(model.linear1, "register_forward_hook", fail_register_forward_hook)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        monitor.start()
+
+    assert exc_info.value is original_error
+    assert _hook_count(model) == hooks_before
+    assert monitor._active is False
+
+    monkeypatch.undo()
+    monitor.start()
+    monitor.close()
+    assert _hook_count(model) == hooks_before
