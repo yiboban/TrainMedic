@@ -56,7 +56,12 @@ class Evidence:
     description: str | None = None
 
     def to_dict(self) -> dict[str, JsonValue]:
-        """Return a stable JSON-compatible dictionary."""
+        """Return a JSON-compatible dictionary.
+
+        TrainMedic uses stable primitive values for its own evidence. Arbitrary user
+        objects are converted with ``str(value)``, which is JSON-compatible but may not
+        be stable across processes if the object's string form includes runtime details.
+        """
         return {
             "name": self.name,
             "value": _to_json_compatible(self.value),
@@ -78,7 +83,7 @@ class Diagnostic:
     suggestions: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, JsonValue]:
-        """Return a stable JSON-compatible dictionary."""
+        """Return a JSON-compatible dictionary."""
         return {
             "code": self.code,
             "severity": self.severity.value,

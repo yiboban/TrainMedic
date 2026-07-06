@@ -10,7 +10,10 @@ or other explicit runtime evidence.
 
 Diagnostics use a unified data model so console output, JSON output, tests, and future
 integrations all describe findings in the same shape. Phase 0 defines `Severity`,
-`Evidence`, and `Diagnostic` with stable JSON-compatible serialization.
+`Evidence`, and `Diagnostic` with JSON-compatible serialization. Standard TrainMedic
+evidence values should use stable primitive types. Arbitrary user objects are converted
+with `str(value)` only as a compatibility fallback, and that string form may include
+runtime-specific details.
 
 Future phases are expected to separate responsibilities as follows:
 
@@ -19,10 +22,14 @@ Future phases are expected to separate responsibilities as follows:
 - `rules`: deterministic checks that turn observations into diagnostics.
 - `reports`: console and JSON rendering.
 
+Phase 1 implements the first `inspectors`, `rules`, and `reports` modules for static
+model/optimizer parameter checks. Parameter identity comparisons use `id(parameter)` so
+shared parameters and tied weights are handled without Tensor equality comparisons.
+
 Monitoring code must not keep full tensors by default. It should store bounded summaries
 such as shape, dtype, device, min, max, mean, standard deviation, NaN/Inf counts, and norm.
 This keeps memory overhead predictable and avoids retaining computation graphs.
 
-Current phase status: Phase 0 only provides project infrastructure and diagnostic data
-structures. It does not implement hooks, optimizer inspection, training-loop monitoring,
-CLI commands, or diagnostic rules.
+Current phase status: Phase 1 implements static model/optimizer inspection only. It does
+not implement hooks, gradient monitoring, activation monitoring, parameter update
+monitoring, training-loop monitoring, CLI commands, or automatic fixes.

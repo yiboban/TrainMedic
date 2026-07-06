@@ -19,6 +19,7 @@ class NumericEnum(Enum):
 
 def test_import_trainmedic() -> None:
     assert trainmedic.Diagnostic is Diagnostic
+    assert callable(trainmedic.inspect_optimizer)
 
 
 def test_version() -> None:
