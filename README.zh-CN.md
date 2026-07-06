@@ -2,41 +2,40 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-TrainMedic is an evidence-first diagnostics toolkit for PyTorch training failures.
+TrainMedic 是一个面向 PyTorch 训练失败场景、以证据优先的诊断工具包。
 
-TrainMedic is currently under active development. Phase 3 provides static inspection of
-model/optimizer parameter relationships, forward output monitoring for the first observed
-NaN and Inf, and accumulated parameter gradient monitoring. It does not yet inspect
-parameter updates, train/eval mode, or full training loops.
+TrainMedic is currently under active development. 当前 Phase 3 已提供模型与
+optimizer 参数关系的静态检查、forward 输出首次 NaN/Inf 监控，以及累积参数梯度监控。
+它尚未检查参数更新、train/eval 模式或完整训练循环。
 
-## Goal
+## 项目目标
 
-The project aims to help users answer:
+TrainMedic 的目标是帮助用户回答：
 
-- Why did training fail or stop making progress?
-- Where did the first suspicious signal appear?
-- What evidence supports the diagnosis?
-- What can the user try next?
+- 训练为什么失败，或者为什么不再取得进展？
+- 第一个可疑信号出现在哪里？
+- 哪些证据支持这个诊断？
+- 用户下一步可以尝试什么？
 
-## MVP Scope
+## MVP 范围
 
-The first MVP will focus on five classes of issues:
+第一个 MVP 将聚焦五类问题：
 
-- Trainable parameters missing from the optimizer.
-- Gradients that are `None`, NaN, Inf, exploding, or vanishing.
-- Forward or backward tensors that first contain NaN or Inf.
-- Parameters that do not update after optimizer steps.
-- Model train/eval mode mistakes.
+- 可训练参数没有加入 optimizer。
+- 梯度为 `None`、NaN、Inf、爆炸或消失。
+- Forward 或 backward tensor 首次出现 NaN 或 Inf。
+- optimizer step 后参数没有更新。
+- 模型 train/eval 模式使用错误。
 
-## Development Install
+## 开发安装
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
-Install the package in editable mode before running examples from the repository.
+从仓库运行 examples 前，请先用 editable 模式安装本包。
 
-## Minimal Data Structure Example
+## 最小数据结构示例
 
 ```python
 import json
@@ -56,7 +55,7 @@ diagnostic = trainmedic.Diagnostic(
 print(json.dumps(diagnostic.to_dict(), indent=2))
 ```
 
-Example output:
+示例输出：
 
 ```json
 {
@@ -77,20 +76,19 @@ Example output:
 }
 ```
 
-TrainMedic evidence values are JSON-compatible. Standard TrainMedic evidence uses stable
-primitive values such as strings, numbers, booleans, lists, and dictionaries. Arbitrary
-third-party Python objects are converted with `str(value)` for JSON compatibility, but
-their string form is not guaranteed to be stable across processes.
+TrainMedic 的 evidence value 会保持 JSON 兼容。标准 evidence 使用字符串、数字、
+布尔值、列表、字典等稳定基础类型。任意第三方 Python 对象会通过 `str(value)`
+转换以保证 JSON 兼容，但该字符串形式不保证跨进程稳定。
 
-## Static Optimizer Inspection
+## 静态 Optimizer 检查
 
-Currently implemented:
+当前已经实现：
 
-- Static model and optimizer parameter inspection.
-- Forward output NaN/Inf monitoring.
-- Accumulated parameter gradient monitoring.
+- 静态模型与 optimizer 参数检查。
+- Forward 输出 NaN/Inf 监控。
+- 累积参数梯度监控。
 
-Example:
+示例：
 
 ```python
 import torch
@@ -114,7 +112,7 @@ diagnostics = inspect_optimizer(model, optimizer)
 print(format_diagnostics(diagnostics))
 ```
 
-Output:
+输出：
 
 ```text
 [1] TM1001 ERROR - Trainable parameter is not managed by the optimizer
@@ -137,7 +135,7 @@ Suggestions:
   - If this parameter is intentionally frozen, set requires_grad=False explicitly.
 ```
 
-Supported Phase 1 diagnostic codes:
+Phase 1 支持的诊断代码：
 
 - `TM1001 PARAMETER_NOT_IN_OPTIMIZER`
 - `TM1002 OPTIMIZER_PARAMETER_NOT_IN_MODEL`
@@ -147,10 +145,9 @@ Supported Phase 1 diagnostic codes:
 - `TM1006 MODEL_HAS_NO_PARAMETERS`
 - `TM1007 DUPLICATE_PARAMETER_IN_OPTIMIZER`
 
-## Forward Monitoring
+## Forward 监控
 
-TrainMedic can monitor module forward outputs without modifying the returned tensors or
-the computation graph:
+TrainMedic 可以监控 module forward 输出，不修改返回 tensor，也不修改计算图：
 
 ```python
 import torch
@@ -182,7 +179,7 @@ with watch_forward(model) as monitor:
 print(format_diagnostics(monitor.diagnostics))
 ```
 
-NaN output:
+NaN 输出：
 
 ```text
 [1] TM3001 ERROR - Forward output contains NaN
@@ -201,21 +198,9 @@ Evidence:
   - numel: 2
   - nan_count: 1
   - inf_count: 0
-Possible causes:
-  - A log or square root operation may have received negative values.
-  - A division or normalization operation may have become invalid.
-  - A numerical overflow may have occurred upstream.
-  - The module input may already contain non-finite values.
-  - Low-precision computation may be unstable for this operation.
-Suggestions:
-  - Check the input range for this module.
-  - Inspect nearby division, log, sqrt, exp, and softmax operations.
-  - Add input assertions around the suspected operation.
-  - Try FP32 or BF16 for the unstable region.
-  - Check the learning rate and outputs from previous layers.
 ```
 
-Inf output example:
+Inf 输出示例：
 
 ```text
 [1] TM3002 ERROR - Forward output contains Inf
@@ -234,48 +219,34 @@ Evidence:
   - numel: 2
   - nan_count: 0
   - inf_count: 2
-Possible causes:
-  - A division by zero may have occurred.
-  - An exp operation may have overflowed.
-  - An activation value may have grown too large.
-  - The selected precision may not represent this value range.
-  - The module input may already contain Inf.
-Suggestions:
-  - Check denominators and normalization constants.
-  - Inspect exp, softmax, and scaling operations near this module.
-  - Check activation magnitudes in previous layers.
-  - Try FP32 or BF16 for the unstable region.
-  - Check the learning rate and initialization scale.
 ```
 
-TrainMedic reports the first observed NaN and Inf outputs, not every propagated
-occurrence. If one tensor contains both, `TM3001` is emitted before `TM3002`.
+TrainMedic 报告首次观测到的 NaN 和 Inf 输出，而不是每一次传播后的重复出现。
+如果同一个 tensor 同时包含二者，先报告 `TM3001`，再报告 `TM3002`。
 
-`watch_forward()` defaults to `module_scope="all"` so it can catch functional operations
-inside non-leaf modules. `module_scope="leaf"` monitors leaf modules and always also
-monitors the root model. The context manager removes hooks on normal and exceptional
-exit, and it does not suppress model exceptions.
+`watch_forward()` 默认使用 `module_scope="all"`，因此可以捕捉非叶子 module 内部的
+functional 操作。`module_scope="leaf"` 监控叶子 module，并始终额外监控 root model。
+context manager 会在正常退出或异常退出时移除 hooks，也不会吞掉模型异常。
 
-Forward monitoring currently checks floating-point and complex strided tensors. Sparse,
-meta, quantized, and backend-specific tensors that do not support `torch.isnan` or
-`torch.isinf` may be skipped and counted by `monitor.unsupported_tensor_count`.
+Forward 监控当前检查 floating-point 和 complex strided tensors。Sparse、meta、
+quantized 以及特定后端 tensor 如果不支持 `torch.isnan` 或 `torch.isinf`，可能会被跳过，
+并计入 `monitor.unsupported_tensor_count`。
 
-On CUDA, the `.item()` calls used to count NaN/Inf values can synchronize the device.
-TrainMedic is a diagnostic tool and should not be left permanently enabled during
-performance benchmarking. Sampling and lower-overhead modes are planned for later phases.
+在 CUDA 上，用于统计 NaN/Inf 的 `.item()` 调用可能导致设备同步。TrainMedic 是诊断工具，
+不应长期保留在性能 benchmark 中。采样和更低开销模式会在后续阶段考虑。
 
-`torch.compile`, TorchScript, distributed training, DeepSpeed, FSDP, and Lightning are
-not formally supported yet.
+`torch.compile`、TorchScript、distributed training、DeepSpeed、FSDP 和 Lightning
+尚未正式支持。
 
-Supported Phase 2 diagnostic codes:
+Phase 2 支持的诊断代码：
 
 - `TM3001 FORWARD_OUTPUT_CONTAINS_NAN`
 - `TM3002 FORWARD_OUTPUT_CONTAINS_INF`
 
-## Gradient Monitoring
+## 梯度监控
 
-Gradient monitoring checks accumulated `Parameter.grad` values. Call
-`check_gradients()` after `backward()` and before `optimizer.step()` or `zero_grad()`:
+梯度监控检查累积后的 `Parameter.grad`。请在 `backward()` 之后、
+`optimizer.step()` 或 `zero_grad()` 之前调用 `check_gradients()`：
 
 ```python
 import torch
@@ -306,7 +277,7 @@ with watch_gradients(model, optimizer) as monitor:
 print(format_diagnostics(monitor.diagnostics))
 ```
 
-`TM2001` output:
+`TM2001` 输出：
 
 ```text
 [1] TM2001 WARNING - Selected parameters have grad=None
@@ -322,7 +293,7 @@ Evidence:
   - selection_scope: optimizer
 ```
 
-`TM2002` output:
+`TM2002` 输出：
 
 ```text
 [1] TM2002 ERROR - Parameter gradient contains NaN
@@ -347,7 +318,7 @@ Evidence:
   - inf_count: 0
 ```
 
-`TM2003` output:
+`TM2003` 输出：
 
 ```text
 [1] TM2003 ERROR - Parameter gradient contains Inf
@@ -372,33 +343,29 @@ Evidence:
   - inf_count: 2
 ```
 
-When an optimizer is provided, `watch_gradients()` monitors trainable model parameters
-that are also managed by that optimizer. Without an optimizer, it monitors all trainable
-model parameters. Static relationship issues such as missing optimizer parameters remain
-the responsibility of `inspect_optimizer()`.
+提供 optimizer 时，`watch_gradients()` 只监控属于该 model、可训练、且由该 optimizer
+管理的参数。不提供 optimizer 时，它监控 model 中全部可训练参数。缺少 optimizer 参数等
+静态关系问题仍由 `inspect_optimizer()` 负责。
 
-GradientMonitor observes the accumulated `.grad` value available when the
-post-accumulate hook runs. If you call backward multiple times without `zero_grad()`,
-gradients accumulate and hook call indexes increase. If `zero_grad(set_to_none=True)` is
-called before `check_gradients()`, selected gradients will be reported as `grad=None`.
-If gradient clipping runs before the check, global norm diagnostics reflect clipped
-gradients.
+GradientMonitor 观测 post-accumulate hook 运行时可用的累积 `.grad`。如果连续多次调用
+backward 且没有 `zero_grad()`，梯度会累积，hook call index 也会增加。如果在
+`check_gradients()` 前调用 `zero_grad(set_to_none=True)`，被选中的梯度会报告为
+`grad=None`。如果梯度裁剪发生在检查前，全局范数诊断反映裁剪后的梯度。
 
-Global gradient norm checks are off by default. They only run when `max_global_norm` or
-`min_global_norm` is explicitly provided, and TrainMedic never clips gradients.
+全局梯度范数检查默认关闭。只有显式传入 `max_global_norm` 或 `min_global_norm` 时才会运行，
+TrainMedic 永远不会裁剪梯度。
 
-Gradient NaN and Inf diagnostics report the first runtime observation of each issue, not
-every propagated occurrence. Sparse COO gradients are checked through `coalesce().values()`
-without densifying. Other sparse layouts and special tensor backends may be skipped and
-counted by `monitor.unsupported_gradient_count`.
+梯度 NaN 和 Inf 诊断只报告每类问题的首次运行时观测，而不是每一次传播后的重复出现。
+Sparse COO 梯度会通过 `coalesce().values()` 检查，不会 densify。其他 sparse layout
+和特殊 tensor 后端可能会被跳过，并计入 `monitor.unsupported_gradient_count`。
 
-Gradient hooks and `.item()` calls add overhead and can synchronize CUDA. Use gradient
-monitoring for a small number of diagnostic steps rather than permanent benchmarking.
+梯度 hooks 和 `.item()` 调用会增加开销，并可能在 CUDA 上同步设备。请将梯度监控用于少量
+诊断 step，而不是长期 benchmark。
 
-AMP GradScaler internals, `torch.compile`, TorchScript, distributed training, DeepSpeed,
-FSDP, and Lightning are not formally supported yet.
+AMP GradScaler 内部、`torch.compile`、TorchScript、distributed training、DeepSpeed、
+FSDP 和 Lightning 尚未正式支持。
 
-Supported Phase 3 diagnostic codes:
+Phase 3 支持的诊断代码：
 
 - `TM2000 NO_PARAMETERS_SELECTED_FOR_GRADIENT_MONITORING`
 - `TM2001 PARAMETER_GRADIENT_IS_NONE`
@@ -407,7 +374,7 @@ Supported Phase 3 diagnostic codes:
 - `TM2004 GLOBAL_GRADIENT_NORM_EXCEEDS_THRESHOLD`
 - `TM2005 GLOBAL_GRADIENT_NORM_BELOW_THRESHOLD`
 
-## Run Checks
+## 运行检查
 
 ```bash
 pytest --cov=trainmedic --cov-report=term-missing
@@ -415,16 +382,16 @@ ruff check .
 mypy src/trainmedic
 ```
 
-## Roadmap
+## 路线图
 
-- Phase 0: project skeleton, tooling, CI, and diagnostic data structures.
-- Phase 1: static model and optimizer inspection.
-- Phase 2: forward numerical monitoring.
-- Phase 3: accumulated parameter gradient monitoring.
-- Phase 4: parameter update monitoring.
-- Phase 5: train/eval mode checks.
+- Phase 0：项目骨架、工具链、CI 和诊断数据结构。
+- Phase 1：静态模型与 optimizer 检查。
+- Phase 2：forward 数值异常监控。
+- Phase 3：累积参数梯度监控。
+- Phase 4：参数更新监控。
+- Phase 5：train/eval 模式检查。
 
-## Contributing
+## 贡献说明
 
-Keep changes small and evidence-based. New diagnostic behavior should include focused
-tests that show the issue is detected and that the fixed version no longer reports it.
+请保持改动小而基于证据。新增诊断行为应包含聚焦测试，证明问题可以被检测到，
+并且修复后的场景不再报告该诊断。
