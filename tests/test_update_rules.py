@@ -1,12 +1,16 @@
 from trainmedic import Severity
 from trainmedic.rules.update_rules import (
     NO_PARAMETERS_SELECTED_FOR_UPDATE_MONITORING,
+    OPTIMIZER_STEP_DID_NOT_COMPLETE,
     OPTIMIZER_STEP_NOT_OBSERVED,
     PARAMETER_UPDATE_NOT_DETECTED,
+    UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE,
     ZERO_LEARNING_RATE_FOR_UPDATE_CANDIDATES,
     no_parameters_selected_diagnostic,
     parameter_update_not_detected_diagnostic,
+    step_did_not_complete_diagnostic,
     step_not_observed_diagnostic,
+    unknown_learning_rate_diagnostic,
     zero_learning_rate_diagnostic,
 )
 
@@ -16,6 +20,8 @@ def test_update_rule_constants_are_stable() -> None:
     assert OPTIMIZER_STEP_NOT_OBSERVED == "TM4001"
     assert ZERO_LEARNING_RATE_FOR_UPDATE_CANDIDATES == "TM4002"
     assert PARAMETER_UPDATE_NOT_DETECTED == "TM4003"
+    assert OPTIMIZER_STEP_DID_NOT_COMPLETE == "TM4004"
+    assert UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE == "TM4005"
 
 
 def test_update_rule_severities() -> None:
@@ -65,6 +71,22 @@ def test_update_rule_severities() -> None:
             configured_sample_size=64,
             configured_max_snapshot_elements=100_000,
         ),
+        step_did_not_complete_diagnostic(
+            attempted_step_count=1,
+            successful_step_count=0,
+            incomplete_step_count=1,
+            last_attempted_step_index=1,
+            pending_snapshot_present=True,
+        ),
+        unknown_learning_rate_diagnostic(
+            step_index=1,
+            affected_parameter_count=1,
+            affected_parameter_names_preview=("weight",),
+            omitted_parameter_count=0,
+            optimizer_group_indices=(0,),
+            learning_rate_representations=("bool:True",),
+            selected_parameter_count=1,
+        ),
     )
 
     assert tuple(diagnostic.severity for diagnostic in diagnostics) == (
@@ -72,4 +94,6 @@ def test_update_rule_severities() -> None:
         Severity.WARNING,
         Severity.WARNING,
         Severity.WARNING,
+        Severity.WARNING,
+        Severity.INFO,
     )

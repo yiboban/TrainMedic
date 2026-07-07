@@ -8,6 +8,8 @@ NO_PARAMETERS_SELECTED_FOR_UPDATE_MONITORING = "TM4000"
 OPTIMIZER_STEP_NOT_OBSERVED = "TM4001"
 ZERO_LEARNING_RATE_FOR_UPDATE_CANDIDATES = "TM4002"
 PARAMETER_UPDATE_NOT_DETECTED = "TM4003"
+OPTIMIZER_STEP_DID_NOT_COMPLETE = "TM4004"
+UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE = "TM4005"
 
 
 def no_parameters_selected_diagnostic(
@@ -177,5 +179,87 @@ def parameter_update_not_detected_diagnostic(
             "Inspect optimizer state and skipped-step logic.",
             "Reproduce the suspicious step in FP32.",
             "Check custom optimizer.step implementations.",
+        ),
+    )
+
+
+def step_did_not_complete_diagnostic(
+    *,
+    attempted_step_count: int,
+    successful_step_count: int,
+    incomplete_step_count: int,
+    last_attempted_step_index: int,
+    pending_snapshot_present: bool,
+) -> Diagnostic:
+    """Create a diagnostic for attempted optimizer steps that did not complete."""
+    return Diagnostic(
+        code=OPTIMIZER_STEP_DID_NOT_COMPLETE,
+        severity=Severity.WARNING,
+        title="Optimizer step did not complete",
+        message=(
+            "One or more optimizer.step() calls entered the pre-hook but did not reach "
+            "the post-hook during this monitor session."
+        ),
+        evidence=(
+            Evidence("attempted_step_count", attempted_step_count),
+            Evidence("successful_step_count", successful_step_count),
+            Evidence("incomplete_step_count", incomplete_step_count),
+            Evidence("last_attempted_step_index", last_attempted_step_index),
+            Evidence("pending_snapshot_present", pending_snapshot_present),
+        ),
+        possible_causes=(
+            "optimizer.step() may have raised an exception that user code caught.",
+            "A custom optimizer may have interrupted execution inside step().",
+            "Nested or recursive optimizer.step() calls may be unsupported.",
+            "A closure may have raised an exception.",
+            "The optimizer implementation may not have completed normally.",
+        ),
+        suggestions=(
+            "Inspect any optimizer exception that was caught by user code.",
+            "Close and restart the monitor after a failed optimizer step.",
+            "Check custom optimizer or closure implementations.",
+            "Avoid reusing one monitor session after a failed step.",
+        ),
+    )
+
+
+def unknown_learning_rate_diagnostic(
+    *,
+    step_index: int,
+    affected_parameter_count: int,
+    affected_parameter_names_preview: tuple[str, ...],
+    omitted_parameter_count: int,
+    optimizer_group_indices: tuple[int, ...],
+    learning_rate_representations: tuple[str, ...],
+    selected_parameter_count: int,
+) -> Diagnostic:
+    """Create a diagnostic for finite nonzero gradients with unknown learning rates."""
+    return Diagnostic(
+        code=UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE,
+        severity=Severity.INFO,
+        title="Update check skipped for unknown learning rate",
+        message=(
+            "Update comparison was skipped for one or more parameters because their "
+            "learning rate could not be interpreted as a finite scalar."
+        ),
+        evidence=(
+            Evidence("step_index", step_index),
+            Evidence("affected_parameter_count", affected_parameter_count),
+            Evidence("affected_parameter_names_preview", affected_parameter_names_preview),
+            Evidence("omitted_parameter_count", omitted_parameter_count),
+            Evidence("optimizer_group_indices", optimizer_group_indices),
+            Evidence("learning_rate_representations", learning_rate_representations),
+            Evidence("selected_parameter_count", selected_parameter_count),
+        ),
+        possible_causes=(
+            "The learning rate may be a non-scalar Tensor.",
+            "The learning rate may be NaN or Inf.",
+            "The learning rate may be a bool or custom object.",
+            "A scheduler or custom optimizer may store learning rate in an unsupported form.",
+        ),
+        suggestions=(
+            "Use a finite Python float or int learning rate.",
+            "Use a scalar Tensor learning rate only if the optimizer supports it.",
+            "Inspect custom optimizer param group configuration.",
         ),
     )

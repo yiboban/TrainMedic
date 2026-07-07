@@ -58,7 +58,10 @@ Phase 4 adds parameter update monitoring using optimizer step pre-hooks and post
 TrainMedic observes real `optimizer.step()` calls without replacing the method, changing
 step arguments, modifying closures, calling backward, calling step, or touching optimizer
 state. The monitor selects the intersection of trainable model parameters and optimizer
-parameters by object identity.
+parameters by object identity. It refreshes the model/optimizer relationship and learning
+rates at session start and each step pre-hook because schedulers, param groups, and
+`requires_grad` can change during a session. It distinguishes attempted steps from
+completed steps.
 
 Parameter update monitoring uses bounded before/after samples instead of copying whole
 models. Small parameters can be compared exactly when the global snapshot budget allows
@@ -66,12 +69,18 @@ it. Large parameters use deterministic sampled flat indices, so the diagnostic l
 must say that no sampled element changed rather than claiming a full-parameter proof.
 Snapshots are cleared after each post-hook and on close.
 
+Phase 5 adds explicit train/eval mode monitoring using local forward pre-hooks. The user
+must provide `expected_mode`; TrainMedic does not infer phase and never calls `train()` or
+`eval()`. The monitor records only actual module calls, so uncalled branches do not
+produce mode diagnostics. It stores bounded observation summaries and never stores input
+or output tensors.
+
 Monitoring code must not keep full tensors by default. It should store bounded summaries
 such as shape, dtype, device, min, max, mean, standard deviation, NaN/Inf counts, and norm.
 This keeps memory overhead predictable and avoids retaining computation graphs.
 
-Current phase status: Phase 4 implements static model/optimizer inspection, forward
-output NaN/Inf monitoring, accumulated parameter gradient monitoring, and bounded
-parameter update monitoring around optimizer steps. It does not implement Module
-grad_input/grad_output hooks, train/eval mode diagnostics, training-loop monitoring,
-CLI commands, or automatic fixes.
+Current phase status: Phase 5 implements static model/optimizer inspection, forward
+output NaN/Inf monitoring, accumulated parameter gradient monitoring, bounded parameter
+update monitoring around optimizer steps, and explicit train/eval mode diagnostics. It
+does not implement Module grad_input/grad_output hooks, a unified watch entry point,
+training-loop monitoring, CLI commands, or automatic fixes.

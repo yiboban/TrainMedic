@@ -18,11 +18,15 @@ from torch.utils.hooks import RemovableHandle
 from trainmedic.inspectors.model import ModelParameterRecord, collect_model_parameters
 from trainmedic.inspectors.optimizer import collect_optimizer_parameters
 from trainmedic.rules.update_rules import (
+    OPTIMIZER_STEP_DID_NOT_COMPLETE,
     PARAMETER_UPDATE_NOT_DETECTED,
+    UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE,
     ZERO_LEARNING_RATE_FOR_UPDATE_CANDIDATES,
     no_parameters_selected_diagnostic,
     parameter_update_not_detected_diagnostic,
+    step_did_not_complete_diagnostic,
     step_not_observed_diagnostic,
+    unknown_learning_rate_diagnostic,
     zero_learning_rate_diagnostic,
 )
 from trainmedic.types import Diagnostic, JsonValue
@@ -43,6 +47,13 @@ class _SelectedParameter:
     record: ModelParameterRecord
     group_indices: tuple[int, ...]
     learning_rates: tuple[LearningRateValue, ...]
+    learning_rate_representations: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _LearningRateSnapshot:
+    value: LearningRateValue
+    representation: str
 
 
 @dataclass(frozen=True)
@@ -74,6 +85,7 @@ class _PendingStepSnapshot:
     records: tuple[_SnapshotRecord, ...]
     stored_element_count: int
     skipped_parameter_count: int
+    selected_parameter_count: int
 
 
 @dataclass(frozen=True)
@@ -103,17 +115,15 @@ class ParameterUpdateMonitor:
             name="max_snapshot_elements",
         )
 
-        self._model_parameters = collect_model_parameters(model)
-        self._selected_parameters = _select_parameters(self._model_parameters, optimizer)
-        self._optimizer_model_parameter_count = _optimizer_model_parameter_count(
-            self._model_parameters,
-            optimizer,
-        )
+        self._model_parameters: tuple[ModelParameterRecord, ...] = ()
+        self._selected_parameters: tuple[_SelectedParameter, ...] = ()
+        self._optimizer_model_parameter_count = 0
 
         self._handles: list[RemovableHandle] = []
         self._diagnostics: list[Diagnostic] = []
         self._pending_snapshot: _PendingStepSnapshot | None = None
         self._step_count = 0
+        self._attempted_step_count = 0
         self._next_step_index = 0
         self._unsupported_parameter_count = 0
         self._active = False
@@ -147,6 +157,16 @@ class ParameterUpdateMonitor:
         return self._step_count
 
     @property
+    def attempted_step_count(self) -> int:
+        """Number of optimizer steps that entered the pre-hook."""
+        return self._attempted_step_count
+
+    @property
+    def incomplete_step_count(self) -> int:
+        """Number of attempted optimizer steps that did not reach the post-hook."""
+        return self._attempted_step_count - self._step_count
+
+    @property
     def unsupported_parameter_count(self) -> int:
         """Number of selected parameters skipped because update comparison was unsupported."""
         return self._unsupported_parameter_count
@@ -161,10 +181,12 @@ class ParameterUpdateMonitor:
         self._diagnostics.clear()
         self._pending_snapshot = None
         self._step_count = 0
+        self._attempted_step_count = 0
         self._next_step_index = 0
         self._unsupported_parameter_count = 0
         self._handles = []
         self._finalized = False
+        self._refresh_parameter_state()
 
         new_handles: list[RemovableHandle] = []
         try:
@@ -210,15 +232,19 @@ class ParameterUpdateMonitor:
         kwargs: dict[str, Any],
     ) -> None:
         del optimizer, args, kwargs
+        self._attempted_step_count += 1
+        self._next_step_index += 1
+
         if self._pending_snapshot is not None:
             raise RuntimeError(
                 "ParameterUpdateMonitor found a pending snapshot before a new optimizer step. "
                 "Nested or re-entrant optimizer.step() calls are not supported."
             )
 
-        self._next_step_index += 1
+        self._refresh_parameter_state()
         self._pending_snapshot = self._build_pending_snapshot(self._next_step_index)
         self._maybe_report_zero_learning_rate(self._pending_snapshot)
+        self._maybe_report_unknown_learning_rate(self._pending_snapshot)
         return None
 
     def _step_post_hook(
@@ -273,7 +299,9 @@ class ParameterUpdateMonitor:
                     sampled_element_count=0,
                     unsupported_reason="not_update_candidate",
                 )
-                if gradient_summary.state == "unsupported":
+                if gradient_summary.state == "unsupported" or (
+                    gradient_summary.state == "finite_nonzero" and lr_state == "unknown"
+                ):
                     self._unsupported_parameter_count += 1
 
             records.append(snapshot)
@@ -283,6 +311,7 @@ class ParameterUpdateMonitor:
             records=tuple(records),
             stored_element_count=self._max_snapshot_elements - remaining_budget,
             skipped_parameter_count=skipped_parameter_count,
+            selected_parameter_count=len(self._selected_parameters),
         )
 
     def _maybe_report_zero_learning_rate(self, pending: _PendingStepSnapshot) -> None:
@@ -331,7 +360,56 @@ class ParameterUpdateMonitor:
                 omitted_parameter_count=max(0, len(affected) - len(preview)),
                 optimizer_group_indices=group_indices,
                 learning_rate_values=learning_rates,
-                selection_count=len(self._selected_parameters),
+                selection_count=pending.selected_parameter_count,
+            )
+        )
+
+    def _maybe_report_unknown_learning_rate(self, pending: _PendingStepSnapshot) -> None:
+        if self._has_diagnostic(UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE):
+            return
+
+        affected = tuple(
+            snapshot
+            for snapshot in pending.records
+            if (
+                snapshot.gradient_state == "finite_nonzero"
+                and snapshot.learning_rate_state == "unknown"
+            )
+        )
+        if not affected:
+            return
+
+        preview = tuple(
+            snapshot.selected.record.primary_name
+            for snapshot in affected[:_PREVIEW_LIMIT]
+        )
+        group_indices = tuple(
+            sorted(
+                {
+                    group_index
+                    for snapshot in affected
+                    for group_index in snapshot.selected.group_indices
+                }
+            )
+        )
+        representations = tuple(
+            sorted(
+                {
+                    representation
+                    for snapshot in affected
+                    for representation in snapshot.selected.learning_rate_representations
+                }
+            )
+        )
+        self._diagnostics.append(
+            unknown_learning_rate_diagnostic(
+                step_index=pending.step_index,
+                affected_parameter_count=len(affected),
+                affected_parameter_names_preview=preview,
+                omitted_parameter_count=max(0, len(affected) - len(preview)),
+                optimizer_group_indices=group_indices,
+                learning_rate_representations=representations,
+                selected_parameter_count=pending.selected_parameter_count,
             )
         )
 
@@ -395,6 +473,8 @@ class ParameterUpdateMonitor:
         )
 
     def _finalize_session(self) -> None:
+        self._refresh_parameter_state()
+
         if not self._selected_parameters:
             self._diagnostics.append(
                 no_parameters_selected_diagnostic(
@@ -409,16 +489,39 @@ class ParameterUpdateMonitor:
             )
             return
 
-        if self._step_count == 0:
+        if self._attempted_step_count == 0:
             self._diagnostics.append(
                 step_not_observed_diagnostic(
                     selected_parameter_count=len(self._selected_parameters),
                     optimizer_group_count=len(self._optimizer.param_groups),
                 )
             )
+            return
+
+        if (
+            self.incomplete_step_count > 0
+            and not self._has_diagnostic(OPTIMIZER_STEP_DID_NOT_COMPLETE)
+        ):
+            self._diagnostics.append(
+                step_did_not_complete_diagnostic(
+                    attempted_step_count=self._attempted_step_count,
+                    successful_step_count=self._step_count,
+                    incomplete_step_count=self.incomplete_step_count,
+                    last_attempted_step_index=self._next_step_index,
+                    pending_snapshot_present=self._pending_snapshot is not None,
+                )
+            )
 
     def _has_diagnostic(self, code: str) -> bool:
         return any(diagnostic.code == code for diagnostic in self._diagnostics)
+
+    def _refresh_parameter_state(self) -> None:
+        self._model_parameters = collect_model_parameters(self._model)
+        self._selected_parameters = _select_parameters(self._model_parameters, self._optimizer)
+        self._optimizer_model_parameter_count = _optimizer_model_parameter_count(
+            self._model_parameters,
+            self._optimizer,
+        )
 
 
 def watch_updates(
@@ -455,13 +558,17 @@ def _select_parameters(
         if not model_record.requires_grad or not group_indices:
             continue
 
+        learning_rate_snapshots = tuple(
+            _read_learning_rate(optimizer.param_groups[group_index].get("lr"))
+            for group_index in group_indices
+        )
         selected.append(
             _SelectedParameter(
                 record=model_record,
                 group_indices=group_indices,
-                learning_rates=tuple(
-                    _read_learning_rate(optimizer.param_groups[group_index].get("lr"))
-                    for group_index in group_indices
+                learning_rates=tuple(snapshot.value for snapshot in learning_rate_snapshots),
+                learning_rate_representations=tuple(
+                    snapshot.representation for snapshot in learning_rate_snapshots
                 ),
             )
         )
@@ -523,21 +630,45 @@ def _values_for_gradient_checks(gradient: torch.Tensor) -> torch.Tensor | None:
     return None
 
 
-def _read_learning_rate(value: object) -> LearningRateValue:
+def _read_learning_rate(value: object) -> _LearningRateSnapshot:
     if isinstance(value, bool):
-        return "unknown"
+        return _LearningRateSnapshot(value="unknown", representation=f"bool:{value}")
     if isinstance(value, Real):
         learning_rate = float(value)
-        return learning_rate if math.isfinite(learning_rate) else "unknown"
+        if math.isfinite(learning_rate):
+            return _LearningRateSnapshot(value=learning_rate, representation=str(learning_rate))
+        return _LearningRateSnapshot(value="unknown", representation=str(learning_rate))
     if isinstance(value, torch.Tensor):
         if value.ndim != 0 or value.numel() != 1 or value.dtype is torch.bool:
-            return "unknown"
+            return _LearningRateSnapshot(
+                value="unknown",
+                representation=(
+                    f"tensor(shape={tuple(int(size) for size in value.shape)}, "
+                    f"dtype={value.dtype}, device={value.device})"
+                ),
+            )
         try:
             learning_rate = float(value.detach().cpu().item())
         except (RuntimeError, TypeError, ValueError):
-            return "unknown"
-        return learning_rate if math.isfinite(learning_rate) else "unknown"
-    return "unknown"
+            return _LearningRateSnapshot(
+                value="unknown",
+                representation=f"tensor(dtype={value.dtype}, device={value.device})",
+            )
+        if math.isfinite(learning_rate):
+            return _LearningRateSnapshot(
+                value=learning_rate,
+                representation=f"tensor_scalar:{learning_rate}",
+            )
+        return _LearningRateSnapshot(
+            value="unknown",
+            representation=f"tensor_scalar:{learning_rate}",
+        )
+
+    value_type = type(value)
+    return _LearningRateSnapshot(
+        value="unknown",
+        representation=f"{value_type.__module__}.{value_type.__qualname__}",
+    )
 
 
 def _learning_rate_state(learning_rates: tuple[LearningRateValue, ...]) -> LearningRateState:

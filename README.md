@@ -4,11 +4,12 @@
 
 TrainMedic is an evidence-first diagnostics toolkit for PyTorch training failures.
 
-TrainMedic is currently under active development. Phase 4 provides static inspection of
+TrainMedic is currently under active development. Phase 5 provides static inspection of
 model/optimizer parameter relationships, forward output monitoring for the first observed
 NaN and Inf, accumulated parameter gradient monitoring, and bounded parameter update
-monitoring around `optimizer.step()`. It does not yet inspect train/eval mode or full
-training loops.
+monitoring around `optimizer.step()`, plus explicit train/eval mode and gradient-context
+monitoring. It does not yet provide a unified watch entry point or full training-loop
+monitor.
 
 ## Goal
 
@@ -91,6 +92,7 @@ Currently implemented:
 - Forward output NaN/Inf monitoring.
 - Accumulated parameter gradient monitoring.
 - Bounded parameter update monitoring around `optimizer.step()`.
+- Explicit train/eval mode and gradient-context monitoring.
 
 Example:
 
@@ -416,6 +418,11 @@ step pre-hooks and post-hooks. It does not monkey patch `optimizer.step()`, repl
 optimizer, modify closures, change step arguments, call backward, call step, call
 `zero_grad()`, or clip gradients.
 
+The monitor refreshes model/optimizer parameter relationships and learning rates at
+session start and at each step pre-hook. `step_count` means successful post-hook
+completion; `attempted_step_count` includes step calls that entered the pre-hook but did
+not complete.
+
 ```python
 import torch
 from torch import nn
@@ -519,6 +526,92 @@ Supported Phase 4 diagnostic codes:
 - `TM4001 OPTIMIZER_STEP_NOT_OBSERVED`
 - `TM4002 ZERO_LEARNING_RATE_FOR_UPDATE_CANDIDATES`
 - `TM4003 PARAMETER_UPDATE_NOT_DETECTED`
+- `TM4004 OPTIMIZER_STEP_DID_NOT_COMPLETE`
+- `TM4005 UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE`
+
+## Mode Monitoring
+
+`watch_modes()` checks runtime train/eval mode and gradient context during actual forward
+calls. The expected phase must be explicit; TrainMedic does not infer it from the
+optimizer, backward calls, or `model.training`, and it never calls `train()` or `eval()`.
+
+```python
+import torch
+from torch import nn
+
+from trainmedic import watch_modes
+from trainmedic.reports.console import format_diagnostics
+
+
+model = nn.Linear(2, 1)
+model.eval()
+
+with watch_modes(model, expected_mode="train") as monitor:
+    model(torch.ones(1, 2))
+
+print(format_diagnostics(monitor.diagnostics))
+```
+
+`TM5001` output:
+
+```text
+[1] TM5001 WARNING - Root model is in eval mode during training
+Object: <root>
+Message: The root model was first observed in eval mode during an expected training forward.
+Evidence:
+  - sequence_index: 1
+  - module_name: <root>
+  - module_aliases: ["<root>"]
+  - module_type: torch.nn.modules.linear.Linear
+  - module_call_index: 1
+  - is_root: true
+  - expected_mode: train
+  - actual_mode: eval
+  - grad_enabled: true
+  - inference_mode_enabled: false
+```
+
+Dropout and BatchNorm receive specialized diagnostics because their train/eval behavior
+directly affects stochasticity and statistics:
+
+```text
+[1] TM5004 WARNING - Dropout mode differs from expected phase
+Object: dropout
+Message: A called Dropout module was first observed in a mode that differs from the expected phase.
+```
+
+```text
+[1] TM5005 WARNING - BatchNorm mode differs from expected phase
+Object: batch_norm
+Message: A called BatchNorm module was first observed in a mode that differs from the expected phase.
+```
+
+Evaluation with gradient tracking enabled is INFO because ordinary validation usually
+uses `torch.no_grad()`, but gradient-based evaluation, attribution, and adversarial
+methods may intentionally require gradients:
+
+```text
+[1] TM5006 INFO - Gradient tracking is enabled during evaluation
+Object: <root>
+Message: Gradient tracking was enabled during an expected evaluation forward.
+```
+
+Mode monitoring uses local forward pre-hooks on unique module objects. It reports only
+modules actually called in the current session, preserves aliases for shared modules,
+does not modify `.training`, does not replace inputs, and does not store inputs or
+outputs. Forward pre-hooks add diagnostic overhead and should be enabled for focused
+debugging sessions.
+
+Supported Phase 5 diagnostic codes:
+
+- `TM5000 FORWARD_NOT_OBSERVED_DURING_MODE_MONITORING`
+- `TM5001 MODEL_IN_EVAL_DURING_TRAINING`
+- `TM5002 MODEL_IN_TRAIN_DURING_EVALUATION`
+- `TM5003 CALLED_SUBMODULE_MODE_MISMATCH`
+- `TM5004 DROPOUT_MODE_MISMATCH`
+- `TM5005 BATCHNORM_MODE_MISMATCH`
+- `TM5006 GRADIENT_TRACKING_ENABLED_DURING_EVALUATION`
+- `TM5007 GRADIENT_TRACKING_DISABLED_DURING_TRAINING`
 
 ## Run Checks
 
@@ -535,7 +628,7 @@ mypy src/trainmedic
 - Phase 2: forward numerical monitoring.
 - Phase 3: accumulated parameter gradient monitoring.
 - Phase 4: bounded parameter update monitoring around optimizer steps.
-- Phase 5: train/eval mode checks.
+- Phase 5: train/eval mode and gradient-context checks.
 
 ## Contributing
 

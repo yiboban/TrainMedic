@@ -2,6 +2,7 @@
 
 from trainmedic.monitors.forward import watch_forward
 from trainmedic.monitors.gradients import watch_gradients
+from trainmedic.monitors.modes import watch_modes
 from trainmedic.monitors.updates import watch_updates
 from trainmedic.rules.optimizer_rules import inspect_optimizer
 from trainmedic.types import Diagnostic, Evidence, Severity
@@ -16,5 +17,6 @@ __all__ = [
     "inspect_optimizer",
     "watch_forward",
     "watch_gradients",
+    "watch_modes",
     "watch_updates",
 ]

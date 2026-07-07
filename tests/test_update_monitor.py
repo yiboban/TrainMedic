@@ -88,6 +88,25 @@ class FailingOptimizer(torch.optim.Optimizer):
         raise RuntimeError("optimizer step failed")
 
 
+class FailsOnSecondStepOptimizer(torch.optim.Optimizer):
+    def __init__(self, params: Any) -> None:
+        super().__init__(params, {"lr": 0.1})
+        self.calls = 0
+
+    @torch.no_grad()
+    def step(self, closure: Any = None) -> Any:
+        loss = closure() if closure is not None else None
+        self.calls += 1
+        if self.calls == 2:
+            raise RuntimeError("second optimizer step failed")
+        for group in self.param_groups:
+            lr = float(group["lr"])
+            for parameter in group["params"]:
+                if parameter.grad is not None:
+                    parameter.add_(parameter.grad, alpha=-lr)
+        return loss
+
+
 class NaNGradient(torch.autograd.Function):
     @staticmethod
     def forward(ctx: Any, inputs: torch.Tensor) -> torch.Tensor:
@@ -192,6 +211,95 @@ def test_zero_learning_rate_reports_tm4002_not_tm4003_and_parameter_stays_fixed(
     assert "TM4003" not in _codes(monitor.diagnostics)
     for name, parameter in model.named_parameters():
         torch.testing.assert_close(parameter, before[name])
+
+
+def test_update_monitor_reads_lr_changed_after_construction_before_start() -> None:
+    model = TwoParameterModel()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    monitor = watch_updates(model, optimizer)
+    optimizer.param_groups[0]["lr"] = 0.0
+
+    with monitor:
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4002",)
+    assert _evidence(monitor.diagnostics[0])["learning_rate_values"] == [0.0]
+
+
+def test_update_monitor_does_not_use_stale_zero_lr_from_construction() -> None:
+    model = TwoParameterModel()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.0)
+    monitor = watch_updates(model, optimizer)
+    optimizer.param_groups[0]["lr"] = 0.1
+
+    with monitor:
+        _run_sgd_step(model, optimizer)
+
+    assert monitor.diagnostics == ()
+    assert monitor.step_count == 1
+
+
+def test_update_monitor_reads_lr_changed_between_steps() -> None:
+    model = TwoParameterModel()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+
+    with watch_updates(model, optimizer) as monitor:
+        _run_sgd_step(model, optimizer)
+        optimizer.param_groups[0]["lr"] = 0.0
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4002",)
+    evidence = _evidence(monitor.diagnostics[0])
+    assert evidence["step_index"] == 2
+    assert evidence["learning_rate_values"] == [0.0]
+
+
+def test_update_monitor_uses_lr_restored_between_steps() -> None:
+    model = TwoParameterModel()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.0)
+
+    with watch_updates(model, optimizer) as monitor:
+        _run_sgd_step(model, optimizer)
+        optimizer.param_groups[0]["lr"] = 0.1
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4002",)
+    assert monitor.step_count == 2
+
+
+def test_update_monitor_selects_param_group_added_before_start() -> None:
+    model = TwoParameterModel()
+    optimizer = NoOpOptimizer([model.first], lr=0.1)
+    monitor = watch_updates(model, optimizer)
+    optimizer.add_param_group({"params": [model.second], "lr": 0.1})
+
+    with monitor:
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4003",)
+    assert _evidence(monitor.diagnostics[0])["candidate_parameter_count"] == 2
+
+
+def test_update_monitor_refreshes_requires_grad_between_steps() -> None:
+    model = TwoParameterModel()
+    model.second.requires_grad_(False)
+    optimizer = torch.optim.SGD(
+        [
+            {"params": [model.first], "lr": 0.1},
+            {"params": [model.second], "lr": 0.1},
+        ]
+    )
+
+    with watch_updates(model, optimizer) as monitor:
+        _run_sgd_step(model, optimizer)
+        model.second.requires_grad_(True)
+        optimizer.param_groups[1]["lr"] = 0.0
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4002",)
+    evidence = _evidence(monitor.diagnostics[0])
+    assert evidence["step_index"] == 2
+    assert evidence["affected_parameter_names_preview"] == ["second"]
 
 
 def test_partial_zero_lr_group_only_reports_zero_lr_candidates() -> None:
@@ -386,9 +494,45 @@ def test_step_exception_cleans_snapshot_and_does_not_finalize_no_step() -> None:
         optimizer.step()
 
     assert monitor.step_count == 0
+    assert monitor.attempted_step_count == 1
+    assert monitor.incomplete_step_count == 1
     assert monitor.diagnostics == ()
     assert monitor._pending_snapshot is None
     assert monitor._handles == []
+
+
+def test_caught_step_exception_reports_tm4004_not_tm4001() -> None:
+    model = TwoParameterModel()
+    optimizer = FailingOptimizer(model.parameters())
+
+    with watch_updates(model, optimizer) as monitor:
+        model().backward()
+        with pytest.raises(RuntimeError, match="optimizer step failed"):
+            optimizer.step()
+
+    assert _codes(monitor.diagnostics) == ("TM4004",)
+    assert monitor.attempted_step_count == 1
+    assert monitor.step_count == 0
+    assert monitor.incomplete_step_count == 1
+    evidence = _evidence(monitor.diagnostics[0])
+    assert evidence["pending_snapshot_present"] is True
+    assert monitor._pending_snapshot is None
+
+
+def test_success_then_caught_step_exception_reports_incomplete_step() -> None:
+    model = TwoParameterModel()
+    optimizer = FailsOnSecondStepOptimizer(model.parameters())
+
+    with watch_updates(model, optimizer) as monitor:
+        _run_sgd_step(model, optimizer)
+        model().backward()
+        with pytest.raises(RuntimeError, match="second optimizer step failed"):
+            optimizer.step()
+
+    assert _codes(monitor.diagnostics) == ("TM4004",)
+    assert monitor.attempted_step_count == 2
+    assert monitor.step_count == 1
+    assert monitor.incomplete_step_count == 1
 
 
 def test_start_cleans_pre_hook_if_post_hook_registration_fails(
@@ -436,9 +580,48 @@ def test_repeated_start_close_and_restart_are_session_scoped() -> None:
     monitor.start()
     assert monitor.diagnostics == ()
     assert monitor.step_count == 0
+    assert monitor.attempted_step_count == 0
+    assert monitor.incomplete_step_count == 0
     _run_sgd_step(model, optimizer)
     monitor.close()
     assert _evidence(monitor.diagnostics[0])["step_index"] == 1
+
+
+@pytest.mark.parametrize(
+    ("lr_value", "expected_fragment"),
+    [
+        (True, "bool:True"),
+        (float("nan"), "nan"),
+        (float("inf"), "inf"),
+        (torch.tensor([0.1, 0.2]), "tensor(shape=(2,)"),
+        (object(), "builtins.object"),
+    ],
+)
+def test_unknown_learning_rate_reports_tm4005(lr_value: object, expected_fragment: str) -> None:
+    model = TwoParameterModel()
+    optimizer = NoOpOptimizer(model.parameters(), lr=0.1)
+    optimizer.param_groups[0]["lr"] = lr_value
+
+    with watch_updates(model, optimizer) as monitor:
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4005",)
+    evidence = _evidence(monitor.diagnostics[0])
+    assert evidence["affected_parameter_count"] == 2
+    assert expected_fragment in evidence["learning_rate_representations"][0]
+    assert monitor.unsupported_parameter_count >= 2
+
+
+def test_scalar_tensor_learning_rate_is_supported_without_tm4005() -> None:
+    model = TwoParameterModel()
+    optimizer = NoOpOptimizer(model.parameters(), lr=0.1)
+    optimizer.param_groups[0]["lr"] = torch.tensor(0.1)
+
+    with watch_updates(model, optimizer) as monitor:
+        _run_sgd_step(model, optimizer)
+
+    assert _codes(monitor.diagnostics) == ("TM4003",)
+    assert "TM4005" not in _codes(monitor.diagnostics)
 
 
 def test_external_optimizer_hooks_still_run_and_are_not_removed() -> None:
@@ -616,7 +799,7 @@ def test_invalid_snapshot_configuration_raises_value_error(name: str, value: obj
         )
 
 
-def test_tm4000_to_tm4003_format_as_console_and_strict_json() -> None:
+def test_tm4000_to_tm4005_format_as_console_and_strict_json() -> None:
     empty_model = NoParameterModel()
     external = nn.Parameter(torch.ones(1))
     empty_optimizer = torch.optim.SGD([external], lr=0.1)
@@ -638,18 +821,40 @@ def test_tm4000_to_tm4003_format_as_console_and_strict_json() -> None:
     with watch_updates(noop_model, noop_optimizer) as noop_monitor:
         _run_sgd_step(noop_model, noop_optimizer)
 
+    incomplete_model = TwoParameterModel()
+    incomplete_optimizer = FailingOptimizer(incomplete_model.parameters())
+    with watch_updates(incomplete_model, incomplete_optimizer) as incomplete_monitor:
+        incomplete_model().backward()
+        with pytest.raises(RuntimeError):
+            incomplete_optimizer.step()
+
+    unknown_lr_model = TwoParameterModel()
+    unknown_lr_optimizer = NoOpOptimizer(unknown_lr_model.parameters(), lr=0.1)
+    unknown_lr_optimizer.param_groups[0]["lr"] = True
+    with watch_updates(unknown_lr_model, unknown_lr_optimizer) as unknown_lr_monitor:
+        _run_sgd_step(unknown_lr_model, unknown_lr_optimizer)
+
     diagnostics = (
         empty_monitor.diagnostics
         + no_step_monitor.diagnostics
         + zero_lr_monitor.diagnostics
         + noop_monitor.diagnostics
+        + incomplete_monitor.diagnostics
+        + unknown_lr_monitor.diagnostics
     )
-    assert _codes(diagnostics) == ("TM4000", "TM4001", "TM4002", "TM4003")
+    assert _codes(diagnostics) == ("TM4000", "TM4001", "TM4002", "TM4003", "TM4004", "TM4005")
     text = format_diagnostics(diagnostics)
     assert "TM4000" in text
     parsed = json.loads(diagnostics_to_json(diagnostics))
-    assert [item["code"] for item in parsed] == ["TM4000", "TM4001", "TM4002", "TM4003"]
-    assert "NaN" not in diagnostics_to_json(diagnostics)
+    assert [item["code"] for item in parsed] == [
+        "TM4000",
+        "TM4001",
+        "TM4002",
+        "TM4003",
+        "TM4004",
+        "TM4005",
+    ]
+    json.loads(diagnostics_to_json(diagnostics))
 
 
 def test_optimizer_duplicate_model_parameter_count_remains_unique_for_tm4000() -> None:

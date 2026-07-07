@@ -178,6 +178,111 @@ language-model judgment.
   change in the sampled elements. It can miss updates that occur only outside sampled
   positions.
 
+### TM4004 OPTIMIZER_STEP_DID_NOT_COMPLETE
+
+- Severity: `warning`
+- Trigger: the session finalizes normally, at least one optimizer step entered the
+  pre-hook, and at least one attempted step did not reach the post-hook.
+- Evidence: attempted step count, successful step count, incomplete step count, last
+  attempted step index, and whether a pending snapshot existed at finalization.
+- Boundary: if the optimizer exception propagates out of the monitor context, TrainMedic
+  only cleans resources and does not add TM4004.
+- Suggestions: inspect caught optimizer exceptions, close and restart after failed
+  steps, and check custom optimizer or closure code.
+
+### TM4005 UPDATE_CHECK_SKIPPED_FOR_UNKNOWN_LEARNING_RATE
+
+- Severity: `info`
+- Trigger: a selected parameter has a finite nonzero gradient, but its current
+  learning rate cannot be interpreted as a finite scalar.
+- Evidence: first step index, affected parameter count, preview names, group indices,
+  stable learning-rate representations, and selected parameter count.
+- Boundary: unknown learning rates are neither zero nor nonzero for update comparison.
+  These parameters are excluded from TM4002 and TM4003.
+- Suggestions: use finite scalar Python or Tensor learning rates, and inspect custom
+  optimizer param group configuration.
+
+## Mode Rules
+
+### TM5000 FORWARD_NOT_OBSERVED_DURING_MODE_MONITORING
+
+- Severity: `info`
+- Trigger: a mode-monitoring session finalizes normally without any forward pre-hook
+  observation.
+- Evidence: expected mode.
+- Boundary: not emitted when a user exception exits the context.
+
+### TM5001 MODEL_IN_EVAL_DURING_TRAINING
+
+- Severity: `warning`
+- Trigger: `expected_mode="train"` and the root model is actually called while
+  `.training is False`.
+- Evidence: expected and actual mode, sequence index, root call index, module type,
+  grad enabled, and inference-mode state.
+- Boundary: reports the first observed root call only; it does not scan uncalled modules.
+- Suggestions: call `model.train()` before training and restore train mode after
+  validation.
+
+### TM5002 MODEL_IN_TRAIN_DURING_EVALUATION
+
+- Severity: `warning`
+- Trigger: `expected_mode="eval"` and the root model is actually called while
+  `.training is True`.
+- Evidence: same shape as TM5001.
+- Boundary: this is scoped to the expected evaluation session.
+- Suggestions: call `model.eval()` before validation or inference.
+
+### TM5003 CALLED_SUBMODULE_MODE_MISMATCH
+
+- Severity: `info`
+- Trigger: a called non-root, non-Dropout, non-BatchNorm submodule has a mode that
+  differs from the expected phase.
+- Evidence: module name, aliases, type, expected and actual mode, sequence index, and
+  call index.
+- Boundary: INFO because fixed-mode submodules can be intentional.
+- Suggestions: confirm whether the fixed submodule mode is intended.
+
+### TM5004 DROPOUT_MODE_MISMATCH
+
+- Severity: `warning`
+- Trigger: a called Dropout module has a mode that differs from the expected phase.
+- Evidence: common mode observation evidence plus dropout probability, inplace flag,
+  expected stochastic behavior, and actual stochastic behavior.
+- Boundary: reports the first called Dropout mismatch only and does not modify Dropout.
+- Suggestions: check root and submodule `train()` / `eval()` calls.
+
+### TM5005 BATCHNORM_MODE_MISMATCH
+
+- Severity: `warning`
+- Trigger: a called BatchNorm module has a mode that differs from the expected phase.
+- Evidence: common mode observation evidence plus num_features, affine,
+  track_running_stats, and momentum.
+- Boundary: when `track_running_stats=False`, BatchNorm statistics semantics differ; the
+  diagnostic does not unconditionally claim running statistics are used or updated.
+- Suggestions: confirm intended BatchNorm statistics behavior.
+
+### TM5006 GRADIENT_TRACKING_ENABLED_DURING_EVALUATION
+
+- Severity: `info`
+- Trigger: `expected_mode="eval"`, grad-context checks are enabled, the root model is
+  called, and `torch.is_grad_enabled()` is true.
+- Evidence: expected mode, actual mode, root call index, grad enabled, and
+  inference-mode state.
+- Boundary: INFO because gradient-based evaluation, attribution, or adversarial methods
+  may intentionally need gradients.
+- Suggestions: use `torch.no_grad()` for ordinary validation or `torch.inference_mode()`
+  for inference.
+
+### TM5007 GRADIENT_TRACKING_DISABLED_DURING_TRAINING
+
+- Severity: `warning`
+- Trigger: `expected_mode="train"`, grad-context checks are enabled, the root model is
+  called, and `torch.is_grad_enabled()` is false.
+- Evidence: same shape as TM5006.
+- Boundary: does not claim backward must fail; some branches may be intentionally frozen.
+- Suggestions: remove overly broad `torch.no_grad()` or `torch.inference_mode()` scopes
+  around training.
+
 ## Current Limitations
 
 - Forward and gradient monitoring report first observations, not every propagated
@@ -186,5 +291,5 @@ language-model judgment.
   unsupported.
 - Parameter update monitoring does not formally support LBFGS or complex closure-based
   optimizer semantics.
-- Module backward `grad_input` / `grad_output`, train/eval mode diagnostics,
-  distributed training, `torch.compile`, and TorchScript are not formally supported yet.
+- Module backward `grad_input` / `grad_output`, distributed training,
+  `torch.compile`, and TorchScript are not formally supported yet.
