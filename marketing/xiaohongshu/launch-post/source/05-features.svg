@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440">
+  <defs>
+    <style>
+      text {
+        font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+        dominant-baseline: alphabetic;
+      }
+      .mono {
+        font-family: "Consolas", "Cascadia Mono", "Menlo", monospace;
+      }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1440" rx="0" fill="#07111F" stroke="#07111F" stroke-width="0"/>
+  <line x1="0" y1="0" x2="0" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="90" y1="0" x2="90" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="180" y1="0" x2="180" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="270" y1="0" x2="270" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="360" y1="0" x2="360" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="450" y1="0" x2="450" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="540" y1="0" x2="540" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="630" y1="0" x2="630" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="720" y1="0" x2="720" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="810" y1="0" x2="810" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="900" y1="0" x2="900" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="990" y1="0" x2="990" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="1080" y1="0" x2="1080" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="0" x2="1080" y2="0" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="90" x2="1080" y2="90" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="180" x2="1080" y2="180" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="270" x2="1080" y2="270" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="360" x2="1080" y2="360" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="450" x2="1080" y2="450" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="540" x2="1080" y2="540" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="630" x2="1080" y2="630" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="720" x2="1080" y2="720" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="810" x2="1080" y2="810" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="900" x2="1080" y2="900" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="990" x2="1080" y2="990" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1080" x2="1080" y2="1080" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1170" x2="1080" y2="1170" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1260" x2="1080" y2="1260" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1350" x2="1080" y2="1350" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1440" x2="1080" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <rect x="86" y="48" width="220" height="56" rx="28" fill="#0E2035" stroke="#24425F" stroke-width="2"/>
+  <circle cx="120" cy="76" r="14" fill="#56D68A" stroke="none" stroke-width="0"/>
+  <line x1="112" y1="76" x2="128" y2="76" stroke="#07111F" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="68" x2="120" y2="84" stroke="#07111F" stroke-width="4" stroke-linecap="round"/>
+  <text x="146" y="88" font-size="28" fill="#F7FAFC" font-weight="700" text-anchor="start">TrainMedic</text>
+  <text x="994" y="88" font-size="28" fill="#7D8CA5" font-weight="700" text-anchor="end">05/08</text>
+  <text x="86" y="1386" font-size="24" fill="#7D8CA5" font-weight="400" text-anchor="start">当前可用能力</text>
+  <text x="86" y="190" font-size="56" fill="#F7FAFC" font-weight="800" text-anchor="start">它现在能检查什么？</text>
+  <rect x="86" y="318" width="908" height="126" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <rect x="118" y="349" width="94" height="64" rx="26" fill="#5CC8FF" stroke="#5CC8FF" stroke-width="0"/>
+  <text x="165" y="394" font-size="29" fill="#07111F" font-weight="800" text-anchor="middle">01</text>
+  <text x="242" y="396" font-size="30" fill="#F7FAFC" font-weight="700" text-anchor="start">optimizer 有没有漏参数</text>
+  <rect x="86" y="468" width="908" height="126" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <rect x="118" y="499" width="94" height="64" rx="26" fill="#FF5A6A" stroke="#FF5A6A" stroke-width="0"/>
+  <text x="165" y="544" font-size="29" fill="#07111F" font-weight="800" text-anchor="middle">02</text>
+  <text x="242" y="546" font-size="30" fill="#F7FAFC" font-weight="700" text-anchor="start">Forward 哪一层首次出现 NaN / Inf</text>
+  <rect x="86" y="618" width="908" height="126" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <rect x="118" y="649" width="94" height="64" rx="26" fill="#F6C85F" stroke="#F6C85F" stroke-width="0"/>
+  <text x="165" y="694" font-size="29" fill="#07111F" font-weight="800" text-anchor="middle">03</text>
+  <text x="242" y="696" font-size="30" fill="#F7FAFC" font-weight="700" text-anchor="start">哪些参数 grad=None 或梯度异常</text>
+  <rect x="86" y="768" width="908" height="126" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <rect x="118" y="799" width="94" height="64" rx="26" fill="#56D68A" stroke="#56D68A" stroke-width="0"/>
+  <text x="165" y="844" font-size="29" fill="#07111F" font-weight="800" text-anchor="middle">04</text>
+  <text x="242" y="846" font-size="30" fill="#F7FAFC" font-weight="700" text-anchor="start">optimizer.step 后参数有没有变化</text>
+  <rect x="86" y="918" width="908" height="126" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <rect x="118" y="949" width="94" height="64" rx="26" fill="#A78BFA" stroke="#A78BFA" stroke-width="0"/>
+  <text x="165" y="994" font-size="29" fill="#07111F" font-weight="800" text-anchor="middle">05</text>
+  <text x="242" y="996" font-size="30" fill="#F7FAFC" font-weight="700" text-anchor="start">train / eval、Dropout、BatchNorm 是否正确</text>
+  <text x="540" y="1218" font-size="32" fill="#B7C3D7" font-weight="700" text-anchor="middle">不是自动修复，而是把问题讲清楚。</text>
+</svg>

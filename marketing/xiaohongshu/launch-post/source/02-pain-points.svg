@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440">
+  <defs>
+    <style>
+      text {
+        font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+        dominant-baseline: alphabetic;
+      }
+      .mono {
+        font-family: "Consolas", "Cascadia Mono", "Menlo", monospace;
+      }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1440" rx="0" fill="#07111F" stroke="#07111F" stroke-width="0"/>
+  <line x1="0" y1="0" x2="0" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="90" y1="0" x2="90" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="180" y1="0" x2="180" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="270" y1="0" x2="270" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="360" y1="0" x2="360" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="450" y1="0" x2="450" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="540" y1="0" x2="540" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="630" y1="0" x2="630" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="720" y1="0" x2="720" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="810" y1="0" x2="810" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="900" y1="0" x2="900" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="990" y1="0" x2="990" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="1080" y1="0" x2="1080" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="0" x2="1080" y2="0" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="90" x2="1080" y2="90" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="180" x2="1080" y2="180" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="270" x2="1080" y2="270" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="360" x2="1080" y2="360" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="450" x2="1080" y2="450" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="540" x2="1080" y2="540" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="630" x2="1080" y2="630" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="720" x2="1080" y2="720" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="810" x2="1080" y2="810" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="900" x2="1080" y2="900" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="990" x2="1080" y2="990" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1080" x2="1080" y2="1080" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1170" x2="1080" y2="1170" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1260" x2="1080" y2="1260" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1350" x2="1080" y2="1350" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1440" x2="1080" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <rect x="86" y="48" width="220" height="56" rx="28" fill="#0E2035" stroke="#24425F" stroke-width="2"/>
+  <circle cx="120" cy="76" r="14" fill="#56D68A" stroke="none" stroke-width="0"/>
+  <line x1="112" y1="76" x2="128" y2="76" stroke="#07111F" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="68" x2="120" y2="84" stroke="#07111F" stroke-width="4" stroke-linecap="round"/>
+  <text x="146" y="88" font-size="28" fill="#F7FAFC" font-weight="700" text-anchor="start">TrainMedic</text>
+  <text x="994" y="88" font-size="28" fill="#7D8CA5" font-weight="700" text-anchor="end">02/08</text>
+  <text x="86" y="1386" font-size="24" fill="#7D8CA5" font-weight="400" text-anchor="start">真实训练痛点</text>
+  <text x="86" y="190" font-size="58" fill="#F7FAFC" font-weight="800" text-anchor="start">这些问题你遇到过吗？</text>
+  <rect x="86" y="310" width="908" height="132" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <circle cx="144" cy="376" r="30" fill="#FF5A6A" stroke="none" stroke-width="0"/>
+  <text x="144" y="387" font-size="28" fill="#07111F" font-weight="800" text-anchor="middle">1</text>
+  <text x="198" y="392" font-size="35" fill="#F7FAFC" font-weight="700" text-anchor="start">loss 突然变成 NaN</text>
+  <rect x="86" y="468" width="908" height="132" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <circle cx="144" cy="534" r="30" fill="#F6C85F" stroke="none" stroke-width="0"/>
+  <text x="144" y="545" font-size="28" fill="#07111F" font-weight="800" text-anchor="middle">2</text>
+  <text x="198" y="550" font-size="35" fill="#F7FAFC" font-weight="700" text-anchor="start">有些参数一直 grad=None</text>
+  <rect x="86" y="626" width="908" height="132" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <circle cx="144" cy="692" r="30" fill="#5CC8FF" stroke="none" stroke-width="0"/>
+  <text x="144" y="703" font-size="28" fill="#07111F" font-weight="800" text-anchor="middle">3</text>
+  <text x="198" y="708" font-size="35" fill="#F7FAFC" font-weight="700" text-anchor="start">训练正常运行，但参数根本没更新</text>
+  <rect x="86" y="784" width="908" height="132" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <circle cx="144" cy="850" r="30" fill="#A78BFA" stroke="none" stroke-width="0"/>
+  <text x="144" y="861" font-size="28" fill="#07111F" font-weight="800" text-anchor="middle">4</text>
+  <text x="198" y="866" font-size="35" fill="#F7FAFC" font-weight="700" text-anchor="start">optimizer 创建时漏掉了某一层</text>
+  <rect x="86" y="942" width="908" height="132" rx="30" fill="#101B2F" stroke="#2A3A57" stroke-width="2"/>
+  <circle cx="144" cy="1008" r="30" fill="#56D68A" stroke="none" stroke-width="0"/>
+  <text x="144" y="1019" font-size="28" fill="#07111F" font-weight="800" text-anchor="middle">5</text>
+  <text x="198" y="1024" font-size="35" fill="#F7FAFC" font-weight="700" text-anchor="start">验证时忘了 model.eval()</text>
+  <rect x="86" y="1164" width="908" height="116" rx="32" fill="#17243A" stroke="#314766" stroke-width="2"/>
+  <text x="540" y="1235" font-size="34" fill="#F6C85F" font-weight="700" text-anchor="middle">代码不一定报错，但模型就是学不会。</text>
+</svg>

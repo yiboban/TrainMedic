@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440">
+  <defs>
+    <style>
+      text {
+        font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+        dominant-baseline: alphabetic;
+      }
+      .mono {
+        font-family: "Consolas", "Cascadia Mono", "Menlo", monospace;
+      }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1440" rx="0" fill="#07111F" stroke="#07111F" stroke-width="0"/>
+  <line x1="0" y1="0" x2="0" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="90" y1="0" x2="90" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="180" y1="0" x2="180" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="270" y1="0" x2="270" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="360" y1="0" x2="360" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="450" y1="0" x2="450" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="540" y1="0" x2="540" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="630" y1="0" x2="630" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="720" y1="0" x2="720" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="810" y1="0" x2="810" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="900" y1="0" x2="900" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="990" y1="0" x2="990" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="1080" y1="0" x2="1080" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="0" x2="1080" y2="0" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="90" x2="1080" y2="90" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="180" x2="1080" y2="180" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="270" x2="1080" y2="270" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="360" x2="1080" y2="360" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="450" x2="1080" y2="450" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="540" x2="1080" y2="540" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="630" x2="1080" y2="630" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="720" x2="1080" y2="720" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="810" x2="1080" y2="810" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="900" x2="1080" y2="900" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="990" x2="1080" y2="990" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1080" x2="1080" y2="1080" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1170" x2="1080" y2="1170" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1260" x2="1080" y2="1260" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1350" x2="1080" y2="1350" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <line x1="0" y1="1440" x2="1080" y2="1440" stroke="#0C1A2D" stroke-width="1" stroke-linecap="round"/>
+  <rect x="86" y="48" width="220" height="56" rx="28" fill="#0E2035" stroke="#24425F" stroke-width="2"/>
+  <circle cx="120" cy="76" r="14" fill="#56D68A" stroke="none" stroke-width="0"/>
+  <line x1="112" y1="76" x2="128" y2="76" stroke="#07111F" stroke-width="4" stroke-linecap="round"/>
+  <line x1="120" y1="68" x2="120" y2="84" stroke="#07111F" stroke-width="4" stroke-linecap="round"/>
+  <text x="146" y="88" font-size="28" fill="#F7FAFC" font-weight="700" text-anchor="start">TrainMedic</text>
+  <text x="994" y="88" font-size="28" fill="#7D8CA5" font-weight="700" text-anchor="end">01/08</text>
+  <text x="86" y="1386" font-size="24" fill="#7D8CA5" font-weight="400" text-anchor="start">开源 PyTorch 训练诊断工具</text>
+  <rect x="790" y="138" width="150" height="48" rx="24" fill="#1F3A2D" stroke="#2C6B4F" stroke-width="2"/>
+  <text x="865" y="171" font-size="26" fill="#56D68A" font-weight="700" text-anchor="middle">开源项目</text>
+  <text x="86" y="250" font-size="84" fill="#F7FAFC" font-weight="800" text-anchor="start">PyTorch</text>
+  <text x="86" y="350" font-size="84" fill="#F7FAFC" font-weight="800" text-anchor="start">训不动？</text>
+  <text x="86" y="500" font-size="48" fill="#B7C3D7" font-weight="700" text-anchor="start">我做了个开源工具</text>
+  <text x="86" y="566" font-size="48" fill="#B7C3D7" font-weight="700" text-anchor="start">自动帮你找问题</text>
+  <rect x="86" y="682" width="908" height="88" rx="44" fill="#221522" stroke="#62384A" stroke-width="2"/>
+  <text x="540" y="738" font-size="34" fill="#F6C85F" font-weight="700" text-anchor="middle">NaN｜grad=None｜参数没更新</text>
+  <rect x="86" y="842" width="908" height="354" rx="26" fill="#08111F" stroke="#23344D" stroke-width="2"/>
+  <rect x="86" y="842" width="908" height="58" rx="26" fill="#0F1E33" stroke="#23344D" stroke-width="0"/>
+  <circle cx="122" cy="871" r="9" fill="#FF5A6A" stroke="none" stroke-width="0"/>
+  <circle cx="154" cy="871" r="9" fill="#F6C85F" stroke="none" stroke-width="0"/>
+  <circle cx="186" cy="871" r="9" fill="#56D68A" stroke="none" stroke-width="0"/>
+  <text class="mono" x="122" y="946" font-size="28" fill="#FF5A6A" font-weight="400" text-anchor="start">TM3001 ERROR  Forward output contains NaN</text>
+  <text class="mono" x="122" y="990" font-size="28" fill="#F7FAFC" font-weight="400" text-anchor="start">Object: invalid_log</text>
+  <text class="mono" x="122" y="1034" font-size="28" fill="#5CC8FF" font-weight="400" text-anchor="start">Evidence: tensor_path=output</text>
+  <text class="mono" x="122" y="1078" font-size="28" fill="#56D68A" font-weight="400" text-anchor="start">Suggestion: check input range</text>
+  <polyline points="156,1272 190,1278 224,1279 258,1275 292,1269 326,1265 360,1266 394,1272 428,1278 462,1279 496,1275 530,1269 564,1265 598,1266 632,1272 666,1278 700,1279 734,1275 768,1269 802,1265 836,1266 870,1272 904,1277 470,1272 502,1272 522,1234 546,1306 574,1254 602,1272 924,1272" fill="none" stroke="#56D68A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
