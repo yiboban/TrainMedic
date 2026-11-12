@@ -225,6 +225,9 @@ A diagnostic may contain:
 Possible causes are hypotheses based on observed evidence. They are not
 guaranteed root-cause conclusions.
 
+See [Diagnostic Rules](docs/diagnostic-rules.md) for each diagnostic code's
+meaning, severity, and trigger conditions.
+
 ## Support Matrix
 
 | Area                                 | Available                |
